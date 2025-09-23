@@ -1,3 +1,5 @@
+# conda env create -f openloopbalancecontrol-env.yml
+# conda activate openloopbalancecontrol
 name: openloopbalancecontrol
 channels:
   - conda-forge
