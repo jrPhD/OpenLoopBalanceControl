@@ -24,6 +24,8 @@ from datetime import datetime
 import pickle
 import ast
 import pandas as pd
+import sympy as sm
+from sympy import Symbol
 
 
 # from CYINTIA import cyclist, set_axes_equal #My cyclist inertia toolbox
@@ -109,8 +111,11 @@ class OLDC_Solver():
         delta_dot = - np.deg2rad(delta_dot)
         
         
-        Gyr_z_H = df_trial['Gyr_z_H'].to_numpy()
-        Gyr_z_H = np.deg2rad(Gyr_z_H) - phi_dot
+        Gyr_x_H, Gyr_y_H, Gyr_z_H = df_trial[['Gyr_x_H','Gyr_y_H','Gyr_z_H']].to_numpy().T
+        # Gyr_z_H = np.deg2rad(Gyr_z_H) - phi_dot
+        Gyr_x_H =   np.deg2rad(Gyr_z_H)
+        Gyr_y_H = - np.deg2rad(Gyr_x_H)
+        Gyr_z_H = - np.deg2rad(Gyr_y_H)
         
         #Gyr_z_H is used as lean rate that's why it's corrected by phi_dot
         
@@ -120,6 +125,14 @@ class OLDC_Solver():
         # Y pointing up
         # Z pointing forward
         Acc_x_H, Acc_y_H, Acc_z_H = df_trial[['Acc_x_H', 'Acc_y_H', 'Acc_z_H']].to_numpy().T
+        
+        Acc_x_H =   Acc_z_H
+        Acc_y_H = - Acc_x_H
+        Acc_z_H = - Acc_y_H
+
+        
+        
+        
         
         u = df_trial['u'].to_numpy()
         time = df_trial['time'].to_numpy()
@@ -143,7 +156,15 @@ class OLDC_Solver():
                        'roll_rate_u4' :      phi_dot,
                        'yaw_rate_u3' :       psi_dot,
                        'steer_rate_u7' :     delta_dot,
-                       'torso_lean_rate' :   Gyr_z_H,
+                       
+                       'Acc_x_H' : Acc_x_H, 
+                       'Acc_y_H' : Acc_y_H, 
+                       'Acc_z_H' : Acc_z_H,
+                       
+                       'Gyr_x_H' : Gyr_x_H,
+                       'Gyr_y_H' : Gyr_y_H,
+                       'Gyr_z_H' : Gyr_z_H,
+                       
                        'speed' : u} #Include here the signals used to feed the opti
         
         self.x_meas_dict = x_meas_dict
@@ -186,14 +207,32 @@ class OLDC_Solver():
         
         self.data = DataStorage(METADATA)
         
-        
+        t = me.dynamicsymbols._t
         set_model(self.data)
+        
+        eval_ang_vel_mat_head_cst = ['seat_roll','seat_pitch','seat_yaw','torsojoint_theta']
+        eval_ang_vel_head_cst_num = [self.data.constants.get(Symbol(cst)) for cst in eval_ang_vel_mat_head_cst]
+
+
+        # eval_ang_vel_mat_head = sm.lambdify((self.data.x, eval_ang_vel_mat_head_cst), ang_vel_mat_head[:])
+        # eval_acc_mat_head = sm.lambdify((self.data.x, eval_ang_vel_mat_head_cst), acc_mat_head[:])
+        # print('----------------')
+        # print(self.data.eoms[-1])
+        # print(self.data.x)
+        # print('----------------')
+
+
+        # print(eval_ang_vel_mat_head(np.random.random(18), eval_ang_vel_head_cst_num))
+        # print(eval_acc_mat_head(np.random.random(18), eval_ang_vel_head_cst_num))
+
+        
         
         # x_meas_vec = np.array([x_meas_dict[k] for k in x_meas_dict.keys()]).flatten()
         
         #Weigths set to 1 until now
         K_angles = 1
         K_angle_rates = 1
+        K_head_mes = 1
         
         def obj(free):
             """Minimize the error in all of the states."""
@@ -202,15 +241,24 @@ class OLDC_Solver():
             C_roll = (x_meas_dict['roll_angle_q4'] - free[3*NUM_NODES:4*NUM_NODES])**2
             C_steer = (x_meas_dict['steer_angle_q7'] - free[5*NUM_NODES:6*NUM_NODES])**2
             
-        
-            C_speed = (x_meas_dict['speed'] - free[13*NUM_NODES:14*NUM_NODES])**2
-            
             C_roll_rate = (x_meas_dict['roll_rate_u4'] - free[9*NUM_NODES:10*NUM_NODES])**2
             C_yaw_rate = (x_meas_dict['yaw_rate_u3'] - free[15*NUM_NODES:16*NUM_NODES])**2
             C_steer_rate = (x_meas_dict['steer_rate_u7'] - free[11*NUM_NODES:12*NUM_NODES])**2
-            C_torso_lean_rate = (x_meas_dict['torso_lean_rate'] - free[12*NUM_NODES:13*NUM_NODES])**2
-                    
-            J = K_angles*(np.sum(C_yaw + C_roll + C_steer)) + K_angle_rates*np.sum(C_speed + C_roll_rate + C_yaw_rate + C_steer_rate + C_torso_lean_rate)
+            
+            C_Acc_x_H = (x_meas_dict['Acc_x_H'] - free[12*NUM_NODES:13*NUM_NODES])**2
+            C_Acc_y_H = (x_meas_dict['Acc_y_H'] - free[13*NUM_NODES:14*NUM_NODES])**2
+            C_Acc_z_H = (x_meas_dict['Acc_z_H'] - free[14*NUM_NODES:15*NUM_NODES])**2
+            
+            C_Gyr_x_H = (x_meas_dict['Gyr_x_H'] - free[15*NUM_NODES:16*NUM_NODES])**2
+            C_Gyr_y_H = (x_meas_dict['Gyr_y_H'] - free[16*NUM_NODES:17*NUM_NODES])**2
+            C_Gyr_z_H = (x_meas_dict['Gyr_z_H'] - free[17*NUM_NODES:18*NUM_NODES])**2
+            
+            C_speed = (x_meas_dict['speed'] - free[19*NUM_NODES:20*NUM_NODES])**2
+
+        
+            J = K_angles*(np.sum(C_yaw + C_roll + C_steer)) 
+            + K_angle_rates*np.sum(C_speed + C_roll_rate + C_yaw_rate + C_steer_rate)
+            + K_head_mes*np.sum(C_Acc_x_H + C_Acc_y_H + C_Acc_z_H + C_Gyr_x_H + C_Gyr_y_H + C_Gyr_z_H)
             
             return interval*J
         
@@ -252,19 +300,19 @@ class OLDC_Solver():
             grad[3*NUM_NODES:4*NUM_NODES] = 2.0*interval*K_angles*(free[3*NUM_NODES:4*NUM_NODES] - x_meas_dict['roll_angle_q4'])
             grad[5*NUM_NODES:6*NUM_NODES] = 2.0*interval*K_angles*(free[5*NUM_NODES:6*NUM_NODES] - x_meas_dict['steer_angle_q7'])
             
-            # grad[7*NUM_NODES:8*NUM_NODES] = 2.0*interval*K_theta*free[7*NUM_NODES:8*NUM_NODES]*NUM_NODES
-        
-            
-            grad[13*NUM_NODES:14*NUM_NODES] = 2.0*interval*K_angle_rates*(free[13*NUM_NODES:14*NUM_NODES] - x_meas_dict['speed'])
-        
             grad[9*NUM_NODES:10*NUM_NODES] = 2.0*interval*K_angle_rates*(free[9*NUM_NODES:10*NUM_NODES] - x_meas_dict['roll_rate_u4'])
             grad[15*NUM_NODES:16*NUM_NODES] = 2.0*interval*K_angle_rates*(free[15*NUM_NODES:16*NUM_NODES] - x_meas_dict['yaw_rate_u3'])
             grad[11*NUM_NODES:12*NUM_NODES] = 2.0*interval*K_angle_rates*(free[11*NUM_NODES:12*NUM_NODES] - x_meas_dict['steer_rate_u7'])
-            grad[12*NUM_NODES:13*NUM_NODES] = 2.0*interval*K_angle_rates*(free[12*NUM_NODES:13*NUM_NODES] - x_meas_dict['torso_lean_rate'])
-        
-            # grad[18*NUM_NODES:19*NUM_NODES] = 2.0*interval*K_torques*free[18*NUM_NODES:19*NUM_NODES]
-            # grad[19*NUM_NODES:20*NUM_NODES] = 2.0*interval*K_torques*free[19*NUM_NODES:20*NUM_NODES]
-            # grad[20*NUM_NODES:21*NUM_NODES] = 2.0*interval*K_torques*free[20*NUM_NODES:21*NUM_NODES]
+            
+            grad[12*NUM_NODES:13*NUM_NODES] = 2.0*interval*K_head_mes*(free[12*NUM_NODES:13*NUM_NODES] - x_meas_dict['Acc_x_H'])
+            grad[13*NUM_NODES:14*NUM_NODES] = 2.0*interval*K_head_mes*(free[13*NUM_NODES:14*NUM_NODES] - x_meas_dict['Acc_y_H'])
+            grad[14*NUM_NODES:15*NUM_NODES] = 2.0*interval*K_head_mes*(free[14*NUM_NODES:15*NUM_NODES] - x_meas_dict['Acc_z_H'])
+
+            grad[15*NUM_NODES:16*NUM_NODES] = 2.0*interval*K_head_mes*(free[15*NUM_NODES:16*NUM_NODES] - x_meas_dict['Gyr_x_H'])
+            grad[16*NUM_NODES:17*NUM_NODES] = 2.0*interval*K_head_mes*(free[16*NUM_NODES:17*NUM_NODES] - x_meas_dict['Gyr_y_H'])
+            grad[17*NUM_NODES:18*NUM_NODES] = 2.0*interval*K_head_mes*(free[17*NUM_NODES:18*NUM_NODES] - x_meas_dict['Gyr_z_H'])
+
+            grad[19*NUM_NODES:20*NUM_NODES] = 2.0*interval*K_angle_rates*(free[19*NUM_NODES:20*NUM_NODES] - x_meas_dict['speed'])
         
         
             return grad
@@ -315,29 +363,31 @@ class OLDC_Solver():
             integration_method='midpoint'
             )
         
-        max_item = 30000
+        max_item = 1500
         
         self.problem.add_option('max_iter' , max_item)
         
-        x0 = np.zeros((21, NUM_NODES)).flatten()
+        x0 = np.zeros((24+3, NUM_NODES)).flatten()
         
         x0[2*NUM_NODES:3*NUM_NODES] = x_meas_dict['yaw_angle_q3'] 
         x0[3*NUM_NODES:4*NUM_NODES] = x_meas_dict['roll_angle_q4'] 
         x0[5*NUM_NODES:6*NUM_NODES] = x_meas_dict['steer_angle_q7'] 
                 
-        x0[13*NUM_NODES:14*NUM_NODES] = x_meas_dict['speed'] 
-        
         x0[9*NUM_NODES:10*NUM_NODES] = x_meas_dict['roll_rate_u4'] 
         x0[15*NUM_NODES:16*NUM_NODES] = x_meas_dict['yaw_rate_u3'] 
         x0[11*NUM_NODES:12*NUM_NODES] = x_meas_dict['steer_rate_u7'] 
-        x0[12*NUM_NODES:13*NUM_NODES] = x_meas_dict['torso_lean_rate'] 
         
+        x0[12*NUM_NODES:13*NUM_NODES] = x_meas_dict['Acc_x_H']
+        x0[13*NUM_NODES:14*NUM_NODES] = x_meas_dict['Acc_y_H']
+        x0[14*NUM_NODES:15*NUM_NODES] = x_meas_dict['Acc_z_H']
+
+        x0[15*NUM_NODES:16*NUM_NODES] = x_meas_dict['Gyr_x_H']
+        x0[16*NUM_NODES:17*NUM_NODES] = x_meas_dict['Gyr_y_H']
+        x0[17*NUM_NODES:18*NUM_NODES] = x_meas_dict['Gyr_z_H']
         
-        # initial_guess = np.hstack((x0,  # x
-        #                            np.zeros(NUM_NODES)))  # u
+        x0[19*NUM_NODES:20*NUM_NODES] = x_meas_dict['speed'] 
+
         
-        # initial_guess = np.hstack((x0,  # x
-        #                             np.random.rand(NUM_NODES)))  # u
         
         self.initial_guess = x0  # u
         
@@ -494,7 +544,7 @@ class OLDC_Solver():
         phi_dot_opti = np.rad2deg(self.solution[9*self.NUM_NODES:(9+1)*self.NUM_NODES])
         phi_dot_exp = np.rad2deg(self.x_meas_dict['roll_rate_u4'])
         RMSE_phi_dot = round(RMSE(phi_dot_opti, phi_dot_exp),3)
-        axs[2,0].plot(self.time_simu, phi_dot_opti, color = color[1], label = '$\dot{\phi_{opt}}$'+ f'- RMSE: {RMSE_phi}')
+        axs[2,0].plot(self.time_simu, phi_dot_opti, color = color[1], label = '$\dot{\phi_{opt}}$'+ f'- RMSE: {RMSE_phi_dot}')
         axs[2,0].plot(self.time_simu, phi_dot_exp, ls = '--',label = '$\dot{\phi_{meas}}$', color = color[1])
         
         #Steer angle rate
@@ -506,15 +556,15 @@ class OLDC_Solver():
         
         # Lean angle: theta
         theta_dot_opti = np.rad2deg(self.solution[12*self.NUM_NODES:(12+1)*self.NUM_NODES])
-        theta_dot_exp = np.rad2deg(self.x_meas_dict['torso_lean_rate'])
-        RMSE_dot_theta = round(RMSE(theta_dot_opti, theta_dot_exp),3)
+        # theta_dot_exp = np.rad2deg(self.x_meas_dict['torso_lean_rate'])
+        # RMSE_dot_theta = round(RMSE(theta_dot_opti, theta_dot_exp),3)
     
-        axs[2,0].plot(self.time_simu, theta_dot_opti, color = color[3], label = '$\dot{\\theta_{opt}}$'+f'- RMSE: {RMSE_dot_theta}')
-        axs[2,0].plot(self.time_simu, theta_dot_exp, ls = '--', label = '$\dot{\\theta_{meas}}$', color = color[3])
+        axs[2,0].plot(self.time_simu, theta_dot_opti, color = color[3], label = '$\dot{\\theta_{opt}}$')
+        # axs[2,0].plot(self.time_simu, theta_dot_exp, ls = '--', label = '$\dot{\\theta_{meas}}$', color = color[3])
     
         
         axs[2,0].set_xlim(self.time_simu[0], self.time_simu[-1])
-        axs[2,0].set_title(f'Angles rates')
+        axs[2,0].set_title('Angles rates')
         axs[2,0].set_ylabel('Angles rates [deg/s]')
         axs[2,0].set_xlabel('time [s]')
         axs[2,0].legend(bbox_to_anchor=(1.01, 1.05))
@@ -545,8 +595,55 @@ class OLDC_Solver():
         plt.tight_layout()
         
         if save == 1:
-            plt.savefig(f'{path}/{figname}.svg')
-            plt.savefig(f'{path}/{figname}.png')
+            plt.savefig(f'{path}/{figname}'+'_1_2'+'.svg')
+            plt.savefig(f'{path}/{figname}'+'_1_2'+'.png')
+            plt.close()
+        
+        
+        fig2, axs2 = plt.subplots(3, 2, figsize=(6*3, 8*3), sharex=True)
+        
+        Acc_x_H_opti = self.solution[12*self.NUM_NODES:(12+1)*self.NUM_NODES]
+        Acc_x_H_exp = self.x_meas_dict['Acc_x_H']
+        RMSE_Acc_x_H = round(RMSE(Acc_x_H_opti, Acc_x_H_exp), 3)
+        axs2[0, 0].plot(self.time_simu, Acc_x_H_opti, color = color[0] ,label = '$Acc_x$'+f'- RMSE: {RMSE_Acc_x_H}')
+        axs2[0, 0].plot(self.time_simu, Acc_x_H_exp, ls = '--',label = '$\dot{Acc_x_H_{meas}}$', color = color[0])
+        
+        Acc_y_H_opti = self.solution[13*self.NUM_NODES:(13+1)*self.NUM_NODES]
+        Acc_y_H_exp = self.x_meas_dict['Acc_y_H']
+        RMSE_Acc_y_H = round(RMSE(Acc_y_H_opti, Acc_y_H_exp), 3)
+        axs2[1, 0].plot(self.time_simu, Acc_y_H_opti, color = color[0] ,label = '$Acc_y$'+f'- RMSE: {RMSE_Acc_y_H}')
+        axs2[1, 0].plot(self.time_simu, Acc_y_H_exp, ls = '--',label = '$\dot{Acc_y_H_{meas}}$', color = color[0])
+        
+        Acc_z_H_opti = self.solution[14*self.NUM_NODES:(14+1)*self.NUM_NODES]
+        Acc_z_H_exp = self.x_meas_dict['Acc_z_H']
+        RMSE_Acc_z_H = round(RMSE(Acc_z_H_opti, Acc_z_H_exp), 3)
+        axs2[2, 0].plot(self.time_simu, Acc_z_H_opti, color = color[0] ,label = '$Acc_z$'+f'- RMSE: {RMSE_Acc_z_H}')
+        axs2[2, 0].plot(self.time_simu, Acc_z_H_exp, ls = '--',label = '$\dot{Acc_z_H_{meas}}$', color = color[0])
+        
+        
+        Gyr_x_H_opti = self.solution[15*self.NUM_NODES:(15+1)*self.NUM_NODES]
+        Gyr_x_H_exp = self.x_meas_dict['Gyr_x_H']
+        RMSE_Gyr_x_H = round(RMSE(Gyr_x_H_opti, Gyr_x_H_exp), 3)
+        axs2[0, 1].plot(self.time_simu, Gyr_x_H_opti, color = color[0] ,label = '$Gyr_x_H$'+f'- RMSE: {RMSE_Gyr_x_H}')
+        axs2[0, 1].plot(self.time_simu, Gyr_x_H_exp, ls = '--',label = '$Gyr_x_H_{meas}$', color = color[0])
+        
+        Gyr_y_H_opti = self.solution[16*self.NUM_NODES:(16+1)*self.NUM_NODES]
+        Gyr_y_H_exp = self.x_meas_dict['Gyr_y_H']
+        RMSE_Gyr_y_H = round(RMSE(Gyr_y_H_opti, Gyr_y_H_exp), 3)
+        axs2[1, 1].plot(self.time_simu, Gyr_y_H_opti, color = color[0] ,label = '$Gyr_y_H$'+f'- RMSE: {RMSE_Gyr_y_H}')
+        axs2[1, 1].plot(self.time_simu, Gyr_y_H_exp, ls = '--',label = '$Gyr_y_H{meas}}$', color = color[0])
+        
+        Gyr_z_H_opti = self.solution[17*self.NUM_NODES:(17+1)*self.NUM_NODES]
+        Gyr_z_H_exp = self.x_meas_dict['Gyr_z_H']
+        RMSE_Gyr_z_H = round(RMSE(Gyr_z_H_opti, Gyr_z_H_exp), 3)
+        axs2[2, 1].plot(self.time_simu, Gyr_z_H_opti, color = color[0] ,label = '$Gyr_z_H$'+f'- RMSE: {RMSE_Gyr_z_H}')
+        axs2[2, 1].plot(self.time_simu, Gyr_z_H_exp, ls = '--',label = '$Gyr_z_H_{meas}}$', color = color[0])
+        plt.tight_layout()
+
+        
+        if save == 1:
+            plt.savefig(f'{path}/{figname}'+'_2_2'+'.svg')
+            plt.savefig(f'{path}/{figname}'+'_2_2'+'.png')
             plt.close()
             
 
@@ -574,6 +671,16 @@ class OLDC_Solver():
             self.initialize_problem(n_trial)
             self.solve_and_save()
             self.plot_results()
+            
+
+    def TEST(self):
+        
+
+        self.initialize_problem(54) 
+        self.solve_and_save()
+        self.plot_results()
+        
+
     
 
 #%% Use of the class
@@ -600,7 +707,12 @@ class OLDC_Solver():
 n_part = 4
 ids = OLDC_Solver(f'data/Hand_off_on_experiment/part_{n_part}_Hands_Off_On.csv', n_part) 
 ids.select_trial([54, 60, 62, 67, 69, 75, 77, 83, 85])
-ids.solve_save_plot_all_trials()
+# ids.solve_save_plot_all_trials()
+# ids.TEST()
+res_path = 'results/2025_09_23_15_39_45_part_4_trial_54/2025_09_23_15_39_45_part_4_trial_54'
+ids.load_results(res_path)
+ids.plot_results()
+
 
 # =============================================================================
 # Solve inverse Dyn for only one trial

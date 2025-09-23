@@ -54,6 +54,11 @@ class HeadBase(NewtonianBodyMixin, ModelBase):
     def head_top_point(self) -> Point:
 
         return self._head_top_point
+    
+    @property
+    def imu_point(self) -> Point:
+
+        return self._imu_point
 
     def _define_objects(self) -> None:
         """Define the objects."""
@@ -62,6 +67,8 @@ class HeadBase(NewtonianBodyMixin, ModelBase):
         self._right_ear = Point(self._add_prefix("RE"))
         self._neck_point = Point(self._add_prefix("NP"))
         self._head_top_point = Point(self._add_prefix("TP"))
+        self._imu_point = Point(self._add_prefix("IMU"))
+        
     def get_param_values(self, bicycle_parameters: Bicycle) -> dict[Symbol, float]:
         """Get the parameter values of the head."""
         params = super().get_param_values(bicycle_parameters)

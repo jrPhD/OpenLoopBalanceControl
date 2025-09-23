@@ -911,11 +911,11 @@ def set_model(data: DataStorage):
     data.system = system
     data.eoms = eoms
     
-    data.input_vars = sm.ImmutableMatrix(sorted(input_vars, key=lambda ri: ri.name))
-    #v_angles = sm.ImmutableMatrix(angles)
-    #print(type(input_vars), type(v_angles))
-    #data.angles = sm.ImmutableMatrix(sorted(v_angles, key=lambda ri: ri.name))
-    print('the data.input_vars thing is ->', data.input_vars)
+    # data.input_vars = sm.ImmutableMatrix(sorted(input_vars, key=lambda ri: ri.name))
+    # #v_angles = sm.ImmutableMatrix(angles)
+    # #print(type(input_vars), type(v_angles))
+    # #data.angles = sm.ImmutableMatrix(sorted(v_angles, key=lambda ri: ri.name))
+    # print('the data.input_vars thing is ->', data.input_vars)
     
     # print('------------')
     # print(data.metadata.part_personalized_constants.keys())
@@ -931,7 +931,38 @@ def set_model(data: DataStorage):
     
     data.constants = constants
     
+    #Express angular velocity of head frame
     
+    head_body = rider.head.body
+    
+    ang_vel_mat_head = rider.head.frame.ang_vel_in(system.frame).to_matrix(rider.head.frame)
+    acc_mat_head = head_body.masscenter.acc(system.frame).express(rider.head.frame).to_matrix(rider.head.frame)
+    acc_mat_head = acc_mat_head + g*system.frame.z.to_matrix(rider.head.frame)
+    
+    mAx = acc_mat_head[0]
+    mAy = acc_mat_head[1]
+    mAz = acc_mat_head[2]
+    
+    mWx = ang_vel_mat_head[0]
+    mWy = ang_vel_mat_head[1]
+    mWz = ang_vel_mat_head[2]
+    
+    ax, ay, az = me.dynamicsymbols('a_x, a_y, a_z')
+    omega_x, omega_y, omega_z = me.dynamicsymbols('omega_x, omega_y, omega_z')
+    
+    data.eoms = data.eoms.col_join(sm.Matrix([ax - mAx, ay - mAy, az - mAz]))
+    data.eoms = data.eoms.col_join(sm.Matrix([omega_x - mWx, omega_y - mWy, omega_z - mWz]))
+    
+    for symb in [ax, ay, az, omega_x, omega_y, omega_z]:
+        system.add_speeds(symb, independent=False)
+    # input_vars = input_vars.col_join(sm.Matrix([ax, ay, az, omega_x, omega_y, omega_z]))
+
+    # input_vars = input_vars + [ax, ay, az, omega_x, omega_y, omega_z] 
+    data.input_vars = sm.ImmutableMatrix(sorted(input_vars, key=lambda ri: ri.name))
+
+    print('the data.input_vars are ->', data.input_vars)
+    
+    # return(ang_vel_mat_head, acc_mat_head)
     
     # print('------------')
     

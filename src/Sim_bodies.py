@@ -264,6 +264,7 @@ class SimHead(HeadBase):
         self.right_ear.set_pos(self.body.masscenter, (w / 2) * self.y) #- h * self.z)
         self.neck_point.set_pos(self.body.masscenter, h * self.z)
         self.head_top_point.set_pos(self.body.masscenter, - t * self.z)
+        self.imu_point.set_pos(self.body.masscenter, 0 * self.z) #Assuming the IMU is located at the head center of mass
 
 
     def get_param_values(self, bicycle_parameters: Bicycle) -> dict[Symbol, float]:
