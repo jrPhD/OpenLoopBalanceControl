@@ -11,9 +11,11 @@ Question: what characteristics of control actions is related to workload and lea
 
 ## TO DO
 - Include head accelerations to the model
+- Pin or Spherical joint for the head? 
 - Add some bounds (currently have none)?
 - Maybe improve the initial guess, have you ever thougth of doing some basic regressions from previously solved similar problems?
 - Scale models to participants
 - Run optim, fix millions of bugs?
 - Post processing the control actions (deciding how to describe control actions)
 - Run the stats
+
