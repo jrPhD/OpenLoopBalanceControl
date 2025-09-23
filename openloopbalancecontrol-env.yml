@@ -1,0 +1,27 @@
+# conda env create -f openloopbalancecontrol-env.yml
+# conda activate openloopbalancecontrol
+name: openloopbalancecontrol
+channels:
+  - conda-forge
+dependencies:
+  - bicycleparameters
+  - cloudpickle
+  - cyipopt
+  - cython
+  - ipython
+  - matplotlib
+  - numpy
+  - pandas
+  - pillow
+  - pip
+  - scienceplots
+  - scikits.odes
+  - scipy
+  - setuptools
+  - symbrim
+  - symmeplot
+  - sympy
+  - uncertainties
+  - yeadon
+  - pip:
+    - git+https://github.com/csu-hmc/opty#egg=opty
