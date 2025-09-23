@@ -6,6 +6,7 @@ dependencies:
   - cloudpickle
   - cyipopt
   - cython
+  - ipython
   - matplotlib
   - numpy
   - pandas
