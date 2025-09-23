@@ -111,31 +111,43 @@ class OLDC_Solver():
         delta_dot = - np.deg2rad(delta_dot)
         
         
-        Gyr_x_H, Gyr_y_H, Gyr_z_H = df_trial[['Gyr_x_H','Gyr_y_H','Gyr_z_H']].to_numpy().T
+        Gyr_x_H0, Gyr_y_H0, Gyr_z_H0 = df_trial[['Gyr_x_H','Gyr_y_H','Gyr_z_H']].to_numpy().T
         # Gyr_z_H = np.deg2rad(Gyr_z_H) - phi_dot
-        Gyr_x_H =   np.deg2rad(Gyr_z_H)
-        Gyr_y_H = - np.deg2rad(Gyr_x_H)
-        Gyr_z_H = - np.deg2rad(Gyr_y_H)
+        Gyr_x_H =   np.deg2rad(Gyr_z_H0.copy())
+        Gyr_y_H = - np.deg2rad(Gyr_x_H0.copy())
+        Gyr_z_H = - np.deg2rad(Gyr_y_H0.copy())
         
         #Gyr_z_H is used as lean rate that's why it's corrected by phi_dot
         
+        
+
         
         #Accelerations measured in the local head frame (over the nose)
         # X pointing left
         # Y pointing up
         # Z pointing forward
-        Acc_x_H, Acc_y_H, Acc_z_H = df_trial[['Acc_x_H', 'Acc_y_H', 'Acc_z_H']].to_numpy().T
+        Acc_x_H0, Acc_y_H0, Acc_z_H0 = df_trial[['Acc_x_H', 'Acc_y_H', 'Acc_z_H']].to_numpy().T
         
-        Acc_x_H =   Acc_z_H
-        Acc_y_H = - Acc_x_H
-        Acc_z_H = - Acc_y_H
-
-        
-        
-        
+        Acc_x_H =   Acc_z_H0.copy()
+        Acc_y_H = - Acc_x_H0.copy()
+        Acc_z_H = - Acc_y_H0.copy()
         
         u = df_trial['u'].to_numpy()
         time = df_trial['time'].to_numpy()
+
+        fig, axs = plt.subplots(2,1)
+        
+        axs[0].plot(time, Acc_x_H)
+        axs[0].plot(time, Acc_y_H)
+        axs[0].plot(time, Acc_z_H)
+        
+        axs[1].plot(time, Gyr_x_H)
+        axs[1].plot(time, Gyr_y_H)
+        axs[1].plot(time, Gyr_z_H)
+        
+        
+        
+
     
     
         NUM_NODES = len(time)
@@ -245,15 +257,17 @@ class OLDC_Solver():
             C_yaw_rate = (x_meas_dict['yaw_rate_u3'] - free[15*NUM_NODES:16*NUM_NODES])**2
             C_steer_rate = (x_meas_dict['steer_rate_u7'] - free[11*NUM_NODES:12*NUM_NODES])**2
             
-            C_Acc_x_H = (x_meas_dict['Acc_x_H'] - free[12*NUM_NODES:13*NUM_NODES])**2
-            C_Acc_y_H = (x_meas_dict['Acc_y_H'] - free[13*NUM_NODES:14*NUM_NODES])**2
-            C_Acc_z_H = (x_meas_dict['Acc_z_H'] - free[14*NUM_NODES:15*NUM_NODES])**2
+            C_speed = (x_meas_dict['speed'] - free[13*NUM_NODES:14*NUM_NODES])**2
+
             
-            C_Gyr_x_H = (x_meas_dict['Gyr_x_H'] - free[15*NUM_NODES:16*NUM_NODES])**2
-            C_Gyr_y_H = (x_meas_dict['Gyr_y_H'] - free[16*NUM_NODES:17*NUM_NODES])**2
-            C_Gyr_z_H = (x_meas_dict['Gyr_z_H'] - free[17*NUM_NODES:18*NUM_NODES])**2
+            C_Acc_x_H = (x_meas_dict['Acc_x_H'] - free[18*NUM_NODES:19*NUM_NODES])**2
+            C_Acc_y_H = (x_meas_dict['Acc_y_H'] - free[19*NUM_NODES:20*NUM_NODES])**2
+            C_Acc_z_H = (x_meas_dict['Acc_z_H'] - free[20*NUM_NODES:21*NUM_NODES])**2
             
-            C_speed = (x_meas_dict['speed'] - free[19*NUM_NODES:20*NUM_NODES])**2
+            C_Gyr_x_H = (x_meas_dict['Gyr_x_H'] - free[21*NUM_NODES:22*NUM_NODES])**2
+            C_Gyr_y_H = (x_meas_dict['Gyr_y_H'] - free[22*NUM_NODES:23*NUM_NODES])**2
+            C_Gyr_z_H = (x_meas_dict['Gyr_z_H'] - free[23*NUM_NODES:24*NUM_NODES])**2
+            
 
         
             J = K_angles*(np.sum(C_yaw + C_roll + C_steer)) 
@@ -304,15 +318,17 @@ class OLDC_Solver():
             grad[15*NUM_NODES:16*NUM_NODES] = 2.0*interval*K_angle_rates*(free[15*NUM_NODES:16*NUM_NODES] - x_meas_dict['yaw_rate_u3'])
             grad[11*NUM_NODES:12*NUM_NODES] = 2.0*interval*K_angle_rates*(free[11*NUM_NODES:12*NUM_NODES] - x_meas_dict['steer_rate_u7'])
             
-            grad[12*NUM_NODES:13*NUM_NODES] = 2.0*interval*K_head_mes*(free[12*NUM_NODES:13*NUM_NODES] - x_meas_dict['Acc_x_H'])
-            grad[13*NUM_NODES:14*NUM_NODES] = 2.0*interval*K_head_mes*(free[13*NUM_NODES:14*NUM_NODES] - x_meas_dict['Acc_y_H'])
-            grad[14*NUM_NODES:15*NUM_NODES] = 2.0*interval*K_head_mes*(free[14*NUM_NODES:15*NUM_NODES] - x_meas_dict['Acc_z_H'])
+            grad[13*NUM_NODES:14*NUM_NODES] = 2.0*interval*K_angle_rates*(free[13*NUM_NODES:14*NUM_NODES] - x_meas_dict['speed'])
 
-            grad[15*NUM_NODES:16*NUM_NODES] = 2.0*interval*K_head_mes*(free[15*NUM_NODES:16*NUM_NODES] - x_meas_dict['Gyr_x_H'])
-            grad[16*NUM_NODES:17*NUM_NODES] = 2.0*interval*K_head_mes*(free[16*NUM_NODES:17*NUM_NODES] - x_meas_dict['Gyr_y_H'])
-            grad[17*NUM_NODES:18*NUM_NODES] = 2.0*interval*K_head_mes*(free[17*NUM_NODES:18*NUM_NODES] - x_meas_dict['Gyr_z_H'])
+            
+            grad[18*NUM_NODES:19*NUM_NODES] = 2.0*interval*K_head_mes*(free[18*NUM_NODES:19*NUM_NODES] - x_meas_dict['Acc_x_H'])
+            grad[19*NUM_NODES:20*NUM_NODES] = 2.0*interval*K_head_mes*(free[19*NUM_NODES:20*NUM_NODES] - x_meas_dict['Acc_y_H'])
+            grad[20*NUM_NODES:21*NUM_NODES] = 2.0*interval*K_head_mes*(free[20*NUM_NODES:21*NUM_NODES] - x_meas_dict['Acc_z_H'])
 
-            grad[19*NUM_NODES:20*NUM_NODES] = 2.0*interval*K_angle_rates*(free[19*NUM_NODES:20*NUM_NODES] - x_meas_dict['speed'])
+            grad[21*NUM_NODES:22*NUM_NODES] = 2.0*interval*K_head_mes*(free[21*NUM_NODES:22*NUM_NODES] - x_meas_dict['Gyr_x_H'])
+            grad[22*NUM_NODES:23*NUM_NODES] = 2.0*interval*K_head_mes*(free[22*NUM_NODES:23*NUM_NODES] - x_meas_dict['Gyr_y_H'])
+            grad[23*NUM_NODES:24*NUM_NODES] = 2.0*interval*K_head_mes*(free[23*NUM_NODES:24*NUM_NODES] - x_meas_dict['Gyr_z_H'])
+
         
         
             return grad
@@ -377,15 +393,17 @@ class OLDC_Solver():
         x0[15*NUM_NODES:16*NUM_NODES] = x_meas_dict['yaw_rate_u3'] 
         x0[11*NUM_NODES:12*NUM_NODES] = x_meas_dict['steer_rate_u7'] 
         
-        x0[12*NUM_NODES:13*NUM_NODES] = x_meas_dict['Acc_x_H']
-        x0[13*NUM_NODES:14*NUM_NODES] = x_meas_dict['Acc_y_H']
-        x0[14*NUM_NODES:15*NUM_NODES] = x_meas_dict['Acc_z_H']
+        x0[13*NUM_NODES:14*NUM_NODES] = x_meas_dict['speed'] 
 
-        x0[15*NUM_NODES:16*NUM_NODES] = x_meas_dict['Gyr_x_H']
-        x0[16*NUM_NODES:17*NUM_NODES] = x_meas_dict['Gyr_y_H']
-        x0[17*NUM_NODES:18*NUM_NODES] = x_meas_dict['Gyr_z_H']
         
-        x0[19*NUM_NODES:20*NUM_NODES] = x_meas_dict['speed'] 
+        x0[18*NUM_NODES:19*NUM_NODES] = x_meas_dict['Acc_x_H']
+        x0[19*NUM_NODES:20*NUM_NODES] = x_meas_dict['Acc_y_H']
+        x0[20*NUM_NODES:21*NUM_NODES] = x_meas_dict['Acc_z_H']
+
+        x0[21*NUM_NODES:22*NUM_NODES] = x_meas_dict['Gyr_x_H']
+        x0[22*NUM_NODES:23*NUM_NODES] = x_meas_dict['Gyr_y_H']
+        x0[23*NUM_NODES:24*NUM_NODES] = x_meas_dict['Gyr_z_H']
+        
 
         
         
@@ -602,43 +620,51 @@ class OLDC_Solver():
         
         fig2, axs2 = plt.subplots(3, 2, figsize=(6*3, 8*3), sharex=True)
         
-        Acc_x_H_opti = self.solution[12*self.NUM_NODES:(12+1)*self.NUM_NODES]
+        Acc_x_H_opti = self.solution[18*self.NUM_NODES:(18+1)*self.NUM_NODES]
         Acc_x_H_exp = self.x_meas_dict['Acc_x_H']
         RMSE_Acc_x_H = round(RMSE(Acc_x_H_opti, Acc_x_H_exp), 3)
         axs2[0, 0].plot(self.time_simu, Acc_x_H_opti, color = color[0] ,label = '$Acc_x$'+f'- RMSE: {RMSE_Acc_x_H}')
-        axs2[0, 0].plot(self.time_simu, Acc_x_H_exp, ls = '--',label = '$\dot{Acc_x_H_{meas}}$', color = color[0])
+        axs2[0, 0].plot(self.time_simu, Acc_x_H_exp, ls = '--',label = '$Accx_{meas}$', color = color[0])
         
-        Acc_y_H_opti = self.solution[13*self.NUM_NODES:(13+1)*self.NUM_NODES]
+        Acc_y_H_opti = self.solution[19*self.NUM_NODES:(19+1)*self.NUM_NODES]
         Acc_y_H_exp = self.x_meas_dict['Acc_y_H']
         RMSE_Acc_y_H = round(RMSE(Acc_y_H_opti, Acc_y_H_exp), 3)
         axs2[1, 0].plot(self.time_simu, Acc_y_H_opti, color = color[0] ,label = '$Acc_y$'+f'- RMSE: {RMSE_Acc_y_H}')
-        axs2[1, 0].plot(self.time_simu, Acc_y_H_exp, ls = '--',label = '$\dot{Acc_y_H_{meas}}$', color = color[0])
+        axs2[1, 0].plot(self.time_simu, Acc_y_H_exp, ls = '--',label = '$Accy_{meas}$', color = color[0])
         
-        Acc_z_H_opti = self.solution[14*self.NUM_NODES:(14+1)*self.NUM_NODES]
+        Acc_z_H_opti = self.solution[20*self.NUM_NODES:(20+1)*self.NUM_NODES]
         Acc_z_H_exp = self.x_meas_dict['Acc_z_H']
         RMSE_Acc_z_H = round(RMSE(Acc_z_H_opti, Acc_z_H_exp), 3)
         axs2[2, 0].plot(self.time_simu, Acc_z_H_opti, color = color[0] ,label = '$Acc_z$'+f'- RMSE: {RMSE_Acc_z_H}')
-        axs2[2, 0].plot(self.time_simu, Acc_z_H_exp, ls = '--',label = '$\dot{Acc_z_H_{meas}}$', color = color[0])
+        axs2[2, 0].plot(self.time_simu, Acc_z_H_exp, ls = '--',label = '$Accz_{meas}$', color = color[0])
         
         
-        Gyr_x_H_opti = self.solution[15*self.NUM_NODES:(15+1)*self.NUM_NODES]
-        Gyr_x_H_exp = self.x_meas_dict['Gyr_x_H']
+        Gyr_x_H_opti = np.rad2deg(self.solution[21*self.NUM_NODES:(21+1)*self.NUM_NODES])
+        Gyr_x_H_exp = np.rad2deg(self.x_meas_dict['Gyr_x_H'])
         RMSE_Gyr_x_H = round(RMSE(Gyr_x_H_opti, Gyr_x_H_exp), 3)
-        axs2[0, 1].plot(self.time_simu, Gyr_x_H_opti, color = color[0] ,label = '$Gyr_x_H$'+f'- RMSE: {RMSE_Gyr_x_H}')
-        axs2[0, 1].plot(self.time_simu, Gyr_x_H_exp, ls = '--',label = '$Gyr_x_H_{meas}$', color = color[0])
+        axs2[0, 1].plot(self.time_simu, Gyr_x_H_opti, color = color[0] ,label = '$Gyr_x$'+f'- RMSE: {RMSE_Gyr_x_H}')
+        axs2[0, 1].plot(self.time_simu, Gyr_x_H_exp, ls = '--',label = '$Gyrx_{meas}$', color = color[0])
         
-        Gyr_y_H_opti = self.solution[16*self.NUM_NODES:(16+1)*self.NUM_NODES]
-        Gyr_y_H_exp = self.x_meas_dict['Gyr_y_H']
+        Gyr_y_H_opti = np.rad2deg(self.solution[22*self.NUM_NODES:(22+1)*self.NUM_NODES])
+        Gyr_y_H_exp = np.rad2deg(self.x_meas_dict['Gyr_y_H'])
         RMSE_Gyr_y_H = round(RMSE(Gyr_y_H_opti, Gyr_y_H_exp), 3)
-        axs2[1, 1].plot(self.time_simu, Gyr_y_H_opti, color = color[0] ,label = '$Gyr_y_H$'+f'- RMSE: {RMSE_Gyr_y_H}')
-        axs2[1, 1].plot(self.time_simu, Gyr_y_H_exp, ls = '--',label = '$Gyr_y_H{meas}}$', color = color[0])
+        axs2[1, 1].plot(self.time_simu, Gyr_y_H_opti, color = color[0] ,label = '$Gyr_y$'+f'- RMSE: {RMSE_Gyr_y_H}')
+        axs2[1, 1].plot(self.time_simu, Gyr_y_H_exp, ls = '--',label = '$Gyry_{meas}$', color = color[0])
         
-        Gyr_z_H_opti = self.solution[17*self.NUM_NODES:(17+1)*self.NUM_NODES]
-        Gyr_z_H_exp = self.x_meas_dict['Gyr_z_H']
+        Gyr_z_H_opti = np.rad2deg(self.solution[23*self.NUM_NODES:(23+1)*self.NUM_NODES])
+        Gyr_z_H_exp = np.rad2deg(self.x_meas_dict['Gyr_z_H'])
         RMSE_Gyr_z_H = round(RMSE(Gyr_z_H_opti, Gyr_z_H_exp), 3)
-        axs2[2, 1].plot(self.time_simu, Gyr_z_H_opti, color = color[0] ,label = '$Gyr_z_H$'+f'- RMSE: {RMSE_Gyr_z_H}')
-        axs2[2, 1].plot(self.time_simu, Gyr_z_H_exp, ls = '--',label = '$Gyr_z_H_{meas}}$', color = color[0])
+        axs2[2, 1].plot(self.time_simu, Gyr_z_H_opti, color = color[0] ,label = '$Gyr_z$'+f'- RMSE: {RMSE_Gyr_z_H}')
+        axs2[2, 1].plot(self.time_simu, Gyr_z_H_exp, ls = '--',label = '$Gyrz_{meas}$', color = color[0])
         plt.tight_layout()
+        
+        axs2[0,0].legend(bbox_to_anchor=(1.01, 1.05))
+        axs2[1,0].legend(bbox_to_anchor=(1.01, 1.05))
+        axs2[2,0].legend(bbox_to_anchor=(1.01, 1.05))
+        axs2[0,1].legend(bbox_to_anchor=(1.01, 1.05))
+        axs2[1,1].legend(bbox_to_anchor=(1.01, 1.05))
+        axs2[2,1].legend(bbox_to_anchor=(1.01, 1.05))
+
 
         
         if save == 1:
@@ -708,10 +734,10 @@ n_part = 4
 ids = OLDC_Solver(f'data/Hand_off_on_experiment/part_{n_part}_Hands_Off_On.csv', n_part) 
 ids.select_trial([54, 60, 62, 67, 69, 75, 77, 83, 85])
 # ids.solve_save_plot_all_trials()
-# ids.TEST()
-res_path = 'results/2025_09_23_15_39_45_part_4_trial_54/2025_09_23_15_39_45_part_4_trial_54'
-ids.load_results(res_path)
-ids.plot_results()
+ids.TEST()
+# res_path = 'results/2025_09_23_16_49_22_part_4_trial_54/2025_09_23_16_49_22_part_4_trial_54'
+# ids.load_results(res_path)
+# ids.plot_results()
 
 
 # =============================================================================
