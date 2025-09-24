@@ -71,3 +71,10 @@ venv.bak/
 # Spyder project settings
 .spyderproject
 .spyproject
+
+
+# Results files
+*.pkl
+*.svg
+*.html
+animation_frames/

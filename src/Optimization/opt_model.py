@@ -937,7 +937,7 @@ def set_model(data: DataStorage):
     
     ang_vel_mat_head = rider.head.frame.ang_vel_in(system.frame).to_matrix(rider.head.frame)
     acc_mat_head = head_body.masscenter.acc(system.frame).to_matrix(rider.head.frame)
-    acc_mat_head = acc_mat_head + g*system.frame.z.to_matrix(rider.head.frame)
+    acc_mat_head = acc_mat_head - g*system.frame.z.to_matrix(rider.head.frame)
     
     mAx = acc_mat_head[0]
     mAy = acc_mat_head[1]

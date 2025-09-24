@@ -135,15 +135,15 @@ class OLDC_Solver():
         u = df_trial['u'].to_numpy()
         time = df_trial['time'].to_numpy()
 
-        fig, axs = plt.subplots(2,1)
+        # fig, axs = plt.subplots(2,1)
         
-        axs[0].plot(time, Acc_x_H)
-        axs[0].plot(time, Acc_y_H)
-        axs[0].plot(time, Acc_z_H)
+        # axs[0].plot(time, Acc_x_H)
+        # axs[0].plot(time, Acc_y_H)
+        # axs[0].plot(time, Acc_z_H)
         
-        axs[1].plot(time, Gyr_x_H)
-        axs[1].plot(time, Gyr_y_H)
-        axs[1].plot(time, Gyr_z_H)
+        # axs[1].plot(time, Gyr_x_H)
+        # axs[1].plot(time, Gyr_y_H)
+        # axs[1].plot(time, Gyr_z_H)
         
         
         
@@ -379,30 +379,30 @@ class OLDC_Solver():
             integration_method='midpoint'
             )
         
-        max_item = 1500
+        max_item = 3000
         
         self.problem.add_option('max_iter' , max_item)
         
         x0 = np.zeros((24+3, NUM_NODES)).flatten()
         
-        x0[2*NUM_NODES:3*NUM_NODES] = x_meas_dict['yaw_angle_q3'] 
-        x0[3*NUM_NODES:4*NUM_NODES] = x_meas_dict['roll_angle_q4'] 
-        x0[5*NUM_NODES:6*NUM_NODES] = x_meas_dict['steer_angle_q7'] 
+        # x0[2*NUM_NODES:3*NUM_NODES] = x_meas_dict['yaw_angle_q3'] 
+        # x0[3*NUM_NODES:4*NUM_NODES] = x_meas_dict['roll_angle_q4'] 
+        # x0[5*NUM_NODES:6*NUM_NODES] = x_meas_dict['steer_angle_q7'] 
                 
-        x0[9*NUM_NODES:10*NUM_NODES] = x_meas_dict['roll_rate_u4'] 
-        x0[15*NUM_NODES:16*NUM_NODES] = x_meas_dict['yaw_rate_u3'] 
-        x0[11*NUM_NODES:12*NUM_NODES] = x_meas_dict['steer_rate_u7'] 
+        # x0[9*NUM_NODES:10*NUM_NODES] = x_meas_dict['roll_rate_u4'] 
+        # x0[15*NUM_NODES:16*NUM_NODES] = x_meas_dict['yaw_rate_u3'] 
+        # x0[11*NUM_NODES:12*NUM_NODES] = x_meas_dict['steer_rate_u7'] 
         
         x0[13*NUM_NODES:14*NUM_NODES] = x_meas_dict['speed'] 
 
         
-        x0[18*NUM_NODES:19*NUM_NODES] = x_meas_dict['Acc_x_H']
-        x0[19*NUM_NODES:20*NUM_NODES] = x_meas_dict['Acc_y_H']
-        x0[20*NUM_NODES:21*NUM_NODES] = x_meas_dict['Acc_z_H']
+        # x0[18*NUM_NODES:19*NUM_NODES] = x_meas_dict['Acc_x_H']
+        # x0[19*NUM_NODES:20*NUM_NODES] = x_meas_dict['Acc_y_H']
+        # x0[20*NUM_NODES:21*NUM_NODES] = x_meas_dict['Acc_z_H']
 
-        x0[21*NUM_NODES:22*NUM_NODES] = x_meas_dict['Gyr_x_H']
-        x0[22*NUM_NODES:23*NUM_NODES] = x_meas_dict['Gyr_y_H']
-        x0[23*NUM_NODES:24*NUM_NODES] = x_meas_dict['Gyr_z_H']
+        # x0[21*NUM_NODES:22*NUM_NODES] = x_meas_dict['Gyr_x_H']
+        # x0[22*NUM_NODES:23*NUM_NODES] = x_meas_dict['Gyr_y_H']
+        # x0[23*NUM_NODES:24*NUM_NODES] = x_meas_dict['Gyr_z_H']
         
 
         
