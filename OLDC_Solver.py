@@ -244,7 +244,9 @@ class OLDC_Solver():
         #Weigths set to 1 until now
         K_angles = 1
         K_angle_rates = 1
-        K_head_mes = 1
+        K_head_acc = 0
+        K_head_gyr_X = 10
+        K_speed = 1000
         
         def obj(free):
             """Minimize the error in all of the states."""
@@ -271,8 +273,10 @@ class OLDC_Solver():
 
         
             J = K_angles*(np.sum(C_yaw + C_roll + C_steer)) 
-            + K_angle_rates*np.sum(C_speed + C_roll_rate + C_yaw_rate + C_steer_rate)
-            + K_head_mes*np.sum(C_Acc_x_H + C_Acc_y_H + C_Acc_z_H + C_Gyr_x_H + C_Gyr_y_H + C_Gyr_z_H)
+            + K_angle_rates*np.sum(C_roll_rate + C_yaw_rate + C_steer_rate)
+            + K_head_gyr_X*np.sum(C_Gyr_x_H)
+            + K_speed*np.sum(C_speed)
+            + K_head_acc*np.sum(C_Acc_y_H)
             
             return interval*J
         
@@ -318,16 +322,16 @@ class OLDC_Solver():
             grad[15*NUM_NODES:16*NUM_NODES] = 2.0*interval*K_angle_rates*(free[15*NUM_NODES:16*NUM_NODES] - x_meas_dict['yaw_rate_u3'])
             grad[11*NUM_NODES:12*NUM_NODES] = 2.0*interval*K_angle_rates*(free[11*NUM_NODES:12*NUM_NODES] - x_meas_dict['steer_rate_u7'])
             
-            grad[13*NUM_NODES:14*NUM_NODES] = 2.0*interval*K_angle_rates*(free[13*NUM_NODES:14*NUM_NODES] - x_meas_dict['speed'])
+            grad[13*NUM_NODES:14*NUM_NODES] = 2.0*interval*K_speed*(free[13*NUM_NODES:14*NUM_NODES] - x_meas_dict['speed'])
 
             
-            grad[18*NUM_NODES:19*NUM_NODES] = 2.0*interval*K_head_mes*(free[18*NUM_NODES:19*NUM_NODES] - x_meas_dict['Acc_x_H'])
-            grad[19*NUM_NODES:20*NUM_NODES] = 2.0*interval*K_head_mes*(free[19*NUM_NODES:20*NUM_NODES] - x_meas_dict['Acc_y_H'])
-            grad[20*NUM_NODES:21*NUM_NODES] = 2.0*interval*K_head_mes*(free[20*NUM_NODES:21*NUM_NODES] - x_meas_dict['Acc_z_H'])
+            grad[18*NUM_NODES:19*NUM_NODES] = 2.0*interval*0*(free[18*NUM_NODES:19*NUM_NODES] - x_meas_dict['Acc_x_H'])
+            grad[19*NUM_NODES:20*NUM_NODES] = 2.0*interval*K_head_acc*(free[19*NUM_NODES:20*NUM_NODES] - x_meas_dict['Acc_y_H'])
+            grad[20*NUM_NODES:21*NUM_NODES] = 2.0*interval*0*(free[20*NUM_NODES:21*NUM_NODES] - x_meas_dict['Acc_z_H'])
 
-            grad[21*NUM_NODES:22*NUM_NODES] = 2.0*interval*K_head_mes*(free[21*NUM_NODES:22*NUM_NODES] - x_meas_dict['Gyr_x_H'])
-            grad[22*NUM_NODES:23*NUM_NODES] = 2.0*interval*K_head_mes*(free[22*NUM_NODES:23*NUM_NODES] - x_meas_dict['Gyr_y_H'])
-            grad[23*NUM_NODES:24*NUM_NODES] = 2.0*interval*K_head_mes*(free[23*NUM_NODES:24*NUM_NODES] - x_meas_dict['Gyr_z_H'])
+            grad[21*NUM_NODES:22*NUM_NODES] = 2.0*interval*K_head_gyr_X*(free[21*NUM_NODES:22*NUM_NODES] - x_meas_dict['Gyr_x_H'])
+            grad[22*NUM_NODES:23*NUM_NODES] = 2.0*interval*0*(free[22*NUM_NODES:23*NUM_NODES] - x_meas_dict['Gyr_y_H'])
+            grad[23*NUM_NODES:24*NUM_NODES] = 2.0*interval*0*(free[23*NUM_NODES:24*NUM_NODES] - x_meas_dict['Gyr_z_H'])
 
         
         
@@ -379,30 +383,33 @@ class OLDC_Solver():
             integration_method='midpoint'
             )
         
-        max_item = 3000
+        max_item = 5000
         
         self.problem.add_option('max_iter' , max_item)
         
         x0 = np.zeros((24+3, NUM_NODES)).flatten()
         
-        # x0[2*NUM_NODES:3*NUM_NODES] = x_meas_dict['yaw_angle_q3'] 
-        # x0[3*NUM_NODES:4*NUM_NODES] = x_meas_dict['roll_angle_q4'] 
-        # x0[5*NUM_NODES:6*NUM_NODES] = x_meas_dict['steer_angle_q7'] 
+        x0[2*NUM_NODES:3*NUM_NODES] = x_meas_dict['yaw_angle_q3'] 
+        x0[3*NUM_NODES:4*NUM_NODES] = x_meas_dict['roll_angle_q4'] 
+        x0[5*NUM_NODES:6*NUM_NODES] = x_meas_dict['steer_angle_q7'] 
                 
-        # x0[9*NUM_NODES:10*NUM_NODES] = x_meas_dict['roll_rate_u4'] 
-        # x0[15*NUM_NODES:16*NUM_NODES] = x_meas_dict['yaw_rate_u3'] 
-        # x0[11*NUM_NODES:12*NUM_NODES] = x_meas_dict['steer_rate_u7'] 
+        x0[9*NUM_NODES:10*NUM_NODES] = x_meas_dict['roll_rate_u4'] 
+        x0[15*NUM_NODES:16*NUM_NODES] = x_meas_dict['yaw_rate_u3'] 
+        x0[11*NUM_NODES:12*NUM_NODES] = x_meas_dict['steer_rate_u7'] 
         
-        x0[13*NUM_NODES:14*NUM_NODES] = x_meas_dict['speed'] 
+        x0[10*NUM_NODES:11*NUM_NODES] = x_meas_dict['speed'] 
+        x0[13*NUM_NODES:14*NUM_NODES] = - x_meas_dict['speed'] /self.data.constants.get(Symbol('rear_wheel_r'))
+        x0[17*NUM_NODES:18*NUM_NODES] = - x_meas_dict['speed'] /self.data.constants.get(Symbol('front_wheel_r'))
+        
 
         
-        # x0[18*NUM_NODES:19*NUM_NODES] = x_meas_dict['Acc_x_H']
-        # x0[19*NUM_NODES:20*NUM_NODES] = x_meas_dict['Acc_y_H']
-        # x0[20*NUM_NODES:21*NUM_NODES] = x_meas_dict['Acc_z_H']
+        x0[18*NUM_NODES:19*NUM_NODES] = x_meas_dict['Acc_x_H']
+        x0[19*NUM_NODES:20*NUM_NODES] = x_meas_dict['Acc_y_H']
+        x0[20*NUM_NODES:21*NUM_NODES] = x_meas_dict['Acc_z_H']
 
-        # x0[21*NUM_NODES:22*NUM_NODES] = x_meas_dict['Gyr_x_H']
-        # x0[22*NUM_NODES:23*NUM_NODES] = x_meas_dict['Gyr_y_H']
-        # x0[23*NUM_NODES:24*NUM_NODES] = x_meas_dict['Gyr_z_H']
+        x0[21*NUM_NODES:22*NUM_NODES] = x_meas_dict['Gyr_x_H']
+        x0[22*NUM_NODES:23*NUM_NODES] = x_meas_dict['Gyr_y_H']
+        x0[23*NUM_NODES:24*NUM_NODES] = x_meas_dict['Gyr_z_H']
         
 
         
@@ -482,6 +489,23 @@ class OLDC_Solver():
         self.time_simu = dict_loaded['time_simu']
         self.NUM_NODES = len(self.time_simu)
         self.date = results_path.split('_part')[0].split('/')[1]
+        
+        
+        # index = self.n_trial
+        # for sig_name in self.data.x:
+            
+        
+        
+    def load_results_for_initial_guess(self, results_path):
+        
+        
+        with open(f'{results_path}.pkl', 'rb') as file:
+            dict_loaded = pickle.load(file)
+            
+        self.initial_guess = dict_loaded['solution']
+        print('Older solution imported as initial guess')
+        
+        
             
     
     def plot_res_type_1(self, save, path, figname):
@@ -591,8 +615,8 @@ class OLDC_Solver():
         #Torques
         
         #Balance control actions
-        axs[1,1].plot(self.time_simu, self.solution[19*self.NUM_NODES:(19+1)*self.NUM_NODES], label = '$T_{lean}$', color = color[0])
-        axs[1,1].plot(self.time_simu, self.solution[20*self.NUM_NODES:(20+1)*self.NUM_NODES], label = '$T_{roll}$', color = color[1])
+        axs[1,1].plot(self.time_simu, self.solution[26*self.NUM_NODES:(26+1)*self.NUM_NODES], label = '$T_{lean}$', color = color[0])
+        axs[1,1].plot(self.time_simu, self.solution[24*self.NUM_NODES:(24+1)*self.NUM_NODES], label = '$T_{roll}$', color = color[1])
     
         axs[1,1].set_xlim(self.time_simu[0], self.time_simu[-1])
         axs[1,1].set_title('Balance control torques')
@@ -602,7 +626,7 @@ class OLDC_Solver():
         
         
         #Longitudinal motion control action
-        axs[2,1].plot(self.time_simu, self.solution[18*self.NUM_NODES:(18+1)*self.NUM_NODES], label = '$T_{pedal}$', color = color[0])
+        axs[2,1].plot(self.time_simu, self.solution[25*self.NUM_NODES:(25+1)*self.NUM_NODES], label = '$T_{pedal}$', color = color[0])
         axs[2,1].set_xlim(self.time_simu[0], self.time_simu[-1])
         axs[2,1].set_title('Longitudinal motion torques')
         axs[2,1].set_xlabel('time [s]')
@@ -680,7 +704,8 @@ class OLDC_Solver():
         # problem.plot_objective_value()
     
         # create_animation(data, output = 'test.gif') #Works ok
-        create_animation2(self.data, output = f'results/{self.date}_part_{self.n_part}_trial_{self.n_trial}/animation') #Works better
+        
+        create_animation2(self.data, output = f'results/{self.date}_part_{self.n_part}_trial_{self.n_trial}/animation') # use this one
         
         # bike_following_animation(data, output = 'test.gif') # Get error
         # set_simulator(self.data)
@@ -699,10 +724,11 @@ class OLDC_Solver():
             self.plot_results()
             
 
-    def TEST(self):
+    def TEST(self, res_path):
         
 
         self.initialize_problem(54) 
+        self.load_results_for_initial_guess(res_path)
         self.solve_and_save()
         self.plot_results()
         
@@ -734,8 +760,10 @@ n_part = 4
 ids = OLDC_Solver(f'data/Hand_off_on_experiment/part_{n_part}_Hands_Off_On.csv', n_part) 
 ids.select_trial([54, 60, 62, 67, 69, 75, 77, 83, 85])
 # ids.solve_save_plot_all_trials()
-ids.TEST()
-# res_path = 'results/2025_09_23_16_49_22_part_4_trial_54/2025_09_23_16_49_22_part_4_trial_54'
+
+res_path = 'results/2025_09_24_18_37_11_part_4_trial_54/2025_09_24_18_37_11_part_4_trial_54'
+ids.TEST(res_path)
+
 # ids.load_results(res_path)
 # ids.plot_results()
 
