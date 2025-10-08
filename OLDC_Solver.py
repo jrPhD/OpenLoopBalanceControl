@@ -194,13 +194,13 @@ class OLDC_Solver():
             model_torso=True,
             model_head=True,
             sprung_steering=False,
-            model=Model.SINGLE_PENDULUM,
+            model=Model.DOUBLE_PENDULUM,
             task=Task.MATCH_EXP_DATA,
             pedaling_torque = True,
-            extra_roll_torque = True,
-            steer_with=SteerWith.TORSO_TORQUE,
+            extra_roll_torque = False,
+            steer_with=SteerWith.SEAT_AND_TORSO_TORQUE,
             parameter_data_dir=DATA_DIR,
-            seat_type=SeatType.FIXED,
+            seat_type=SeatType.SIDELEAN,
             torso_type=TorsoType.PIN,
             init_guess=InitGuess.RANDOM,
             bicycle_parametrization="Balanceassistv1",
@@ -251,26 +251,43 @@ class OLDC_Solver():
         def obj(free):
             """Minimize the error in all of the states."""
             
+            # C_yaw = (x_meas_dict['yaw_angle_q3'] - free[2*NUM_NODES:3*NUM_NODES])**2
+            # C_roll = (x_meas_dict['roll_angle_q4'] - free[3*NUM_NODES:4*NUM_NODES])**2
+            # C_steer = (x_meas_dict['steer_angle_q7'] - free[5*NUM_NODES:6*NUM_NODES])**2
+            
+            # C_roll_rate = (x_meas_dict['roll_rate_u4'] - free[9*NUM_NODES:10*NUM_NODES])**2
+            # C_yaw_rate = (x_meas_dict['yaw_rate_u3'] - free[15*NUM_NODES:16*NUM_NODES])**2
+            # C_steer_rate = (x_meas_dict['steer_rate_u7'] - free[11*NUM_NODES:12*NUM_NODES])**2
+            
+            # C_speed = (x_meas_dict['speed'] - free[13*NUM_NODES:14*NUM_NODES])**2
+
+            
+            # C_Acc_x_H = (x_meas_dict['Acc_x_H'] - free[18*NUM_NODES:19*NUM_NODES])**2
+            # C_Acc_y_H = (x_meas_dict['Acc_y_H'] - free[19*NUM_NODES:20*NUM_NODES])**2
+            # C_Acc_z_H = (x_meas_dict['Acc_z_H'] - free[20*NUM_NODES:21*NUM_NODES])**2
+            
+            # C_Gyr_x_H = (x_meas_dict['Gyr_x_H'] - free[21*NUM_NODES:22*NUM_NODES])**2
+            # C_Gyr_y_H = (x_meas_dict['Gyr_y_H'] - free[22*NUM_NODES:23*NUM_NODES])**2
+            # C_Gyr_z_H = (x_meas_dict['Gyr_z_H'] - free[23*NUM_NODES:24*NUM_NODES])**2
+            
             C_yaw = (x_meas_dict['yaw_angle_q3'] - free[2*NUM_NODES:3*NUM_NODES])**2
             C_roll = (x_meas_dict['roll_angle_q4'] - free[3*NUM_NODES:4*NUM_NODES])**2
             C_steer = (x_meas_dict['steer_angle_q7'] - free[5*NUM_NODES:6*NUM_NODES])**2
             
-            C_roll_rate = (x_meas_dict['roll_rate_u4'] - free[9*NUM_NODES:10*NUM_NODES])**2
-            C_yaw_rate = (x_meas_dict['yaw_rate_u3'] - free[15*NUM_NODES:16*NUM_NODES])**2
-            C_steer_rate = (x_meas_dict['steer_rate_u7'] - free[11*NUM_NODES:12*NUM_NODES])**2
+            C_roll_rate = (x_meas_dict['roll_rate_u4'] - free[10*NUM_NODES:11*NUM_NODES])**2
+            C_yaw_rate = (x_meas_dict['yaw_rate_u3'] - free[17*NUM_NODES:18*NUM_NODES])**2
+            C_steer_rate = (x_meas_dict['steer_rate_u7'] - free[12*NUM_NODES:13*NUM_NODES])**2
             
-            C_speed = (x_meas_dict['speed'] - free[13*NUM_NODES:14*NUM_NODES])**2
+            C_speed = (x_meas_dict['speed'] - free[15*NUM_NODES:16*NUM_NODES])**2
 
             
-            C_Acc_x_H = (x_meas_dict['Acc_x_H'] - free[18*NUM_NODES:19*NUM_NODES])**2
-            C_Acc_y_H = (x_meas_dict['Acc_y_H'] - free[19*NUM_NODES:20*NUM_NODES])**2
-            C_Acc_z_H = (x_meas_dict['Acc_z_H'] - free[20*NUM_NODES:21*NUM_NODES])**2
+            C_Acc_x_H = (x_meas_dict['Acc_x_H'] - free[20*NUM_NODES:21*NUM_NODES])**2
+            C_Acc_y_H = (x_meas_dict['Acc_y_H'] - free[21*NUM_NODES:22*NUM_NODES])**2
+            C_Acc_z_H = (x_meas_dict['Acc_z_H'] - free[22*NUM_NODES:23*NUM_NODES])**2
             
-            C_Gyr_x_H = (x_meas_dict['Gyr_x_H'] - free[21*NUM_NODES:22*NUM_NODES])**2
-            C_Gyr_y_H = (x_meas_dict['Gyr_y_H'] - free[22*NUM_NODES:23*NUM_NODES])**2
-            C_Gyr_z_H = (x_meas_dict['Gyr_z_H'] - free[23*NUM_NODES:24*NUM_NODES])**2
-            
-
+            C_Gyr_x_H = (x_meas_dict['Gyr_x_H'] - free[23*NUM_NODES:24*NUM_NODES])**2
+            C_Gyr_y_H = (x_meas_dict['Gyr_y_H'] - free[24*NUM_NODES:25*NUM_NODES])**2
+            C_Gyr_z_H = (x_meas_dict['Gyr_z_H'] - free[25*NUM_NODES:26*NUM_NODES])**2
         
             J = K_angles*(np.sum(C_yaw + C_roll + C_steer)) 
             + K_angle_rates*np.sum(C_roll_rate + C_yaw_rate + C_steer_rate)
@@ -314,26 +331,44 @@ class OLDC_Solver():
             # grad[12*NUM_NODES:13*NUM_NODES] = 2.0*interval*K_angle_rates*(free[12*NUM_NODES:13*NUM_NODES] - x_meas_dict['torso_lean_rate'])
         
             
+            # grad[2*NUM_NODES:3*NUM_NODES] = 2.0*interval*K_angles*(free[2*NUM_NODES:3*NUM_NODES] - x_meas_dict['yaw_angle_q3'])
+            # grad[3*NUM_NODES:4*NUM_NODES] = 2.0*interval*K_angles*(free[3*NUM_NODES:4*NUM_NODES] - x_meas_dict['roll_angle_q4'])
+            # grad[5*NUM_NODES:6*NUM_NODES] = 2.0*interval*K_angles*(free[5*NUM_NODES:6*NUM_NODES] - x_meas_dict['steer_angle_q7'])
+            
+            # grad[9*NUM_NODES:10*NUM_NODES] = 2.0*interval*K_angle_rates*(free[9*NUM_NODES:10*NUM_NODES] - x_meas_dict['roll_rate_u4'])
+            # grad[15*NUM_NODES:16*NUM_NODES] = 2.0*interval*K_angle_rates*(free[15*NUM_NODES:16*NUM_NODES] - x_meas_dict['yaw_rate_u3'])
+            # grad[11*NUM_NODES:12*NUM_NODES] = 2.0*interval*K_angle_rates*(free[11*NUM_NODES:12*NUM_NODES] - x_meas_dict['steer_rate_u7'])
+            
+            # grad[13*NUM_NODES:14*NUM_NODES] = 2.0*interval*K_speed*(free[13*NUM_NODES:14*NUM_NODES] - x_meas_dict['speed'])
+
+            
+            # grad[18*NUM_NODES:19*NUM_NODES] = 2.0*interval*0*(free[18*NUM_NODES:19*NUM_NODES] - x_meas_dict['Acc_x_H'])
+            # grad[19*NUM_NODES:20*NUM_NODES] = 2.0*interval*K_head_acc*(free[19*NUM_NODES:20*NUM_NODES] - x_meas_dict['Acc_y_H'])
+            # grad[20*NUM_NODES:21*NUM_NODES] = 2.0*interval*0*(free[20*NUM_NODES:21*NUM_NODES] - x_meas_dict['Acc_z_H'])
+
+            # grad[21*NUM_NODES:22*NUM_NODES] = 2.0*interval*K_head_gyr_X*(free[21*NUM_NODES:22*NUM_NODES] - x_meas_dict['Gyr_x_H'])
+            # grad[22*NUM_NODES:23*NUM_NODES] = 2.0*interval*0*(free[22*NUM_NODES:23*NUM_NODES] - x_meas_dict['Gyr_y_H'])
+            # grad[23*NUM_NODES:24*NUM_NODES] = 2.0*interval*0*(free[23*NUM_NODES:24*NUM_NODES] - x_meas_dict['Gyr_z_H'])
+
             grad[2*NUM_NODES:3*NUM_NODES] = 2.0*interval*K_angles*(free[2*NUM_NODES:3*NUM_NODES] - x_meas_dict['yaw_angle_q3'])
             grad[3*NUM_NODES:4*NUM_NODES] = 2.0*interval*K_angles*(free[3*NUM_NODES:4*NUM_NODES] - x_meas_dict['roll_angle_q4'])
             grad[5*NUM_NODES:6*NUM_NODES] = 2.0*interval*K_angles*(free[5*NUM_NODES:6*NUM_NODES] - x_meas_dict['steer_angle_q7'])
             
-            grad[9*NUM_NODES:10*NUM_NODES] = 2.0*interval*K_angle_rates*(free[9*NUM_NODES:10*NUM_NODES] - x_meas_dict['roll_rate_u4'])
-            grad[15*NUM_NODES:16*NUM_NODES] = 2.0*interval*K_angle_rates*(free[15*NUM_NODES:16*NUM_NODES] - x_meas_dict['yaw_rate_u3'])
-            grad[11*NUM_NODES:12*NUM_NODES] = 2.0*interval*K_angle_rates*(free[11*NUM_NODES:12*NUM_NODES] - x_meas_dict['steer_rate_u7'])
+            grad[10*NUM_NODES:11*NUM_NODES] = 2.0*interval*K_angle_rates*(free[10*NUM_NODES:11*NUM_NODES] - x_meas_dict['roll_rate_u4'])
+            grad[17*NUM_NODES:18*NUM_NODES] = 2.0*interval*K_angle_rates*(free[17*NUM_NODES:18*NUM_NODES] - x_meas_dict['yaw_rate_u3'])
+            grad[12*NUM_NODES:13*NUM_NODES] = 2.0*interval*K_angle_rates*(free[12*NUM_NODES:13*NUM_NODES] - x_meas_dict['steer_rate_u7'])
             
-            grad[13*NUM_NODES:14*NUM_NODES] = 2.0*interval*K_speed*(free[13*NUM_NODES:14*NUM_NODES] - x_meas_dict['speed'])
-
+            grad[15*NUM_NODES:16*NUM_NODES] = 2.0*interval*K_speed*(free[15*NUM_NODES:16*NUM_NODES] - x_meas_dict['speed'])
+    
             
-            grad[18*NUM_NODES:19*NUM_NODES] = 2.0*interval*0*(free[18*NUM_NODES:19*NUM_NODES] - x_meas_dict['Acc_x_H'])
-            grad[19*NUM_NODES:20*NUM_NODES] = 2.0*interval*K_head_acc*(free[19*NUM_NODES:20*NUM_NODES] - x_meas_dict['Acc_y_H'])
-            grad[20*NUM_NODES:21*NUM_NODES] = 2.0*interval*0*(free[20*NUM_NODES:21*NUM_NODES] - x_meas_dict['Acc_z_H'])
+            grad[20*NUM_NODES:21*NUM_NODES] = 2.0*interval*0*(free[20*NUM_NODES:21*NUM_NODES] - x_meas_dict['Acc_x_H'])
+            grad[21*NUM_NODES:22*NUM_NODES] = 2.0*interval*K_head_acc*(free[21*NUM_NODES:22*NUM_NODES] - x_meas_dict['Acc_y_H'])
+            grad[22*NUM_NODES:23*NUM_NODES] = 2.0*interval*0*(free[22*NUM_NODES:23*NUM_NODES] - x_meas_dict['Acc_z_H'])
+    
+            grad[23*NUM_NODES:24*NUM_NODES] = 2.0*interval*K_head_gyr_X*(free[23*NUM_NODES:24*NUM_NODES] - x_meas_dict['Gyr_x_H'])
+            grad[24*NUM_NODES:25*NUM_NODES] = 2.0*interval*0*(free[24*NUM_NODES:25*NUM_NODES] - x_meas_dict['Gyr_y_H'])
+            grad[25*NUM_NODES:26*NUM_NODES] = 2.0*interval*0*(free[25*NUM_NODES:26*NUM_NODES] - x_meas_dict['Gyr_z_H'])
 
-            grad[21*NUM_NODES:22*NUM_NODES] = 2.0*interval*K_head_gyr_X*(free[21*NUM_NODES:22*NUM_NODES] - x_meas_dict['Gyr_x_H'])
-            grad[22*NUM_NODES:23*NUM_NODES] = 2.0*interval*0*(free[22*NUM_NODES:23*NUM_NODES] - x_meas_dict['Gyr_y_H'])
-            grad[23*NUM_NODES:24*NUM_NODES] = 2.0*interval*0*(free[23*NUM_NODES:24*NUM_NODES] - x_meas_dict['Gyr_z_H'])
-
-        
         
             return grad
         
@@ -367,7 +402,8 @@ class OLDC_Solver():
         # data.input_vars[1]: (-500.0, 500.0),
         # data.input_vars[2]: (-500.0, 500.0),
         
-    
+        self.data.constants['seat_pitch'] = - np.deg2rad(15)
+
         
         self.problem = Problem(
             obj,
@@ -383,33 +419,55 @@ class OLDC_Solver():
             integration_method='midpoint'
             )
         
-        max_item = 5000
+        max_item = 50000
         
         self.problem.add_option('max_iter' , max_item)
         
-        x0 = np.zeros((24+3, NUM_NODES)).flatten()
+        # x0 = np.zeros((24+3, NUM_NODES)).flatten()
+        
+        # x0[2*NUM_NODES:3*NUM_NODES] = x_meas_dict['yaw_angle_q3'] 
+        # x0[3*NUM_NODES:4*NUM_NODES] = x_meas_dict['roll_angle_q4'] 
+        # x0[5*NUM_NODES:6*NUM_NODES] = x_meas_dict['steer_angle_q7'] 
+                
+        # x0[9*NUM_NODES:10*NUM_NODES] = x_meas_dict['roll_rate_u4'] 
+        # x0[15*NUM_NODES:16*NUM_NODES] = x_meas_dict['yaw_rate_u3'] 
+        # x0[11*NUM_NODES:12*NUM_NODES] = x_meas_dict['steer_rate_u7'] 
+        
+        # x0[10*NUM_NODES:11*NUM_NODES] = x_meas_dict['speed'] 
+        # x0[13*NUM_NODES:14*NUM_NODES] = - x_meas_dict['speed'] /self.data.constants.get(Symbol('rear_wheel_r'))
+        # x0[17*NUM_NODES:18*NUM_NODES] = - x_meas_dict['speed'] /self.data.constants.get(Symbol('front_wheel_r'))
+        
+        
+        # x0[18*NUM_NODES:19*NUM_NODES] = x_meas_dict['Acc_x_H']
+        # x0[19*NUM_NODES:20*NUM_NODES] = x_meas_dict['Acc_y_H']
+        # x0[20*NUM_NODES:21*NUM_NODES] = x_meas_dict['Acc_z_H']
+
+        # x0[21*NUM_NODES:22*NUM_NODES] = x_meas_dict['Gyr_x_H']
+        # x0[22*NUM_NODES:23*NUM_NODES] = x_meas_dict['Gyr_y_H']
+        # x0[23*NUM_NODES:24*NUM_NODES] = x_meas_dict['Gyr_z_H']
+        
+        x0 = np.zeros((26+3, NUM_NODES)).flatten()
         
         x0[2*NUM_NODES:3*NUM_NODES] = x_meas_dict['yaw_angle_q3'] 
         x0[3*NUM_NODES:4*NUM_NODES] = x_meas_dict['roll_angle_q4'] 
         x0[5*NUM_NODES:6*NUM_NODES] = x_meas_dict['steer_angle_q7'] 
                 
-        x0[9*NUM_NODES:10*NUM_NODES] = x_meas_dict['roll_rate_u4'] 
-        x0[15*NUM_NODES:16*NUM_NODES] = x_meas_dict['yaw_rate_u3'] 
-        x0[11*NUM_NODES:12*NUM_NODES] = x_meas_dict['steer_rate_u7'] 
+        x0[10*NUM_NODES:11*NUM_NODES] = x_meas_dict['roll_rate_u4'] 
+        x0[17*NUM_NODES:18*NUM_NODES] = x_meas_dict['yaw_rate_u3'] 
+        x0[12*NUM_NODES:13*NUM_NODES] = x_meas_dict['steer_rate_u7'] 
         
-        x0[10*NUM_NODES:11*NUM_NODES] = x_meas_dict['speed'] 
-        x0[13*NUM_NODES:14*NUM_NODES] = - x_meas_dict['speed'] /self.data.constants.get(Symbol('rear_wheel_r'))
-        x0[17*NUM_NODES:18*NUM_NODES] = - x_meas_dict['speed'] /self.data.constants.get(Symbol('front_wheel_r'))
+        x0[15*NUM_NODES:16*NUM_NODES] = x_meas_dict['speed'] 
+        x0[11*NUM_NODES:12*NUM_NODES] = - x_meas_dict['speed'] /self.data.constants.get(Symbol('rear_wheel_r'))
+        x0[19*NUM_NODES:20*NUM_NODES] = - x_meas_dict['speed'] /self.data.constants.get(Symbol('front_wheel_r'))
         
+        
+        x0[20*NUM_NODES:21*NUM_NODES] = x_meas_dict['Acc_x_H']
+        x0[21*NUM_NODES:22*NUM_NODES] = x_meas_dict['Acc_y_H']
+        x0[22*NUM_NODES:23*NUM_NODES] = x_meas_dict['Acc_z_H']
 
-        
-        x0[18*NUM_NODES:19*NUM_NODES] = x_meas_dict['Acc_x_H']
-        x0[19*NUM_NODES:20*NUM_NODES] = x_meas_dict['Acc_y_H']
-        x0[20*NUM_NODES:21*NUM_NODES] = x_meas_dict['Acc_z_H']
-
-        x0[21*NUM_NODES:22*NUM_NODES] = x_meas_dict['Gyr_x_H']
-        x0[22*NUM_NODES:23*NUM_NODES] = x_meas_dict['Gyr_y_H']
-        x0[23*NUM_NODES:24*NUM_NODES] = x_meas_dict['Gyr_z_H']
+        x0[23*NUM_NODES:24*NUM_NODES] = x_meas_dict['Gyr_x_H']
+        x0[24*NUM_NODES:25*NUM_NODES] = x_meas_dict['Gyr_y_H']
+        x0[25*NUM_NODES:26*NUM_NODES] = x_meas_dict['Gyr_z_H']
         
 
         
@@ -728,9 +786,9 @@ class OLDC_Solver():
         
 
         self.initialize_problem(54) 
-        self.load_results_for_initial_guess(res_path)
-        self.solve_and_save()
-        self.plot_results()
+        # self.load_results_for_initial_guess(res_path)
+        # self.solve_and_save()
+        # self.plot_results()
         
 
     
@@ -761,8 +819,14 @@ ids = OLDC_Solver(f'data/Hand_off_on_experiment/part_{n_part}_Hands_Off_On.csv',
 ids.select_trial([54, 60, 62, 67, 69, 75, 77, 83, 85])
 # ids.solve_save_plot_all_trials()
 
-res_path = 'results/2025_09_24_18_37_11_part_4_trial_54/2025_09_24_18_37_11_part_4_trial_54'
+res_path = 'results/2025_10_07_22_28_32_part_4_trial_54/2025_10_07_22_28_32_part_4_trial_54'
 ids.TEST(res_path)
+
+print(ids.data.x)
+
+ids.load_results_for_initial_guess(res_path)
+ids.solve_and_save()
+ids.plot_results()
 
 # ids.load_results(res_path)
 # ids.plot_results()
