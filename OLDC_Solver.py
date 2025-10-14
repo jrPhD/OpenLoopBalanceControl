@@ -31,6 +31,40 @@ from sympy import Symbol
 
 # from CYINTIA import cyclist, set_axes_equal #My cyclist inertia toolbox
 
+def sol_dict(free, states, unknown_trajectories, num_nodes):
+    """Returns a dictionary that has SymPy dynamic symbols mapped to
+    the solution.
+
+    Parameters
+    ==========
+    free : array_like, shape(n*N + q*N,)
+        The free optimization variables.
+    states : iterable of dynamicsymbols
+        The system's states in the same order provided to Problem.
+    unknown_trajectories : iterable of dynamicsymbols
+        The system's unknown trajectories in the same order as Problem
+        contains.
+    num_nodes : int
+        The number of nodes in the optimization problem.
+
+    Returns
+    =======
+    d : dictionary
+        Maps dynamicsymbols to array of shape(N,)
+
+    """
+    n = len(states)
+    q = len(unknown_trajectories)
+
+    x, r, _ = parse_free(free, n, q, num_nodes)
+
+    d = {}
+    for symbol, array in zip(states, x):
+        d[symbol] = array
+    for symbol, array in zip(unknown_trajectories, r):
+        d[symbol] = array
+    return d
+
 
 def RMSE(x, x_meas):
     """
@@ -241,40 +275,6 @@ class OLDC_Solver():
 
 
         # x_meas_vec = np.array([x_meas_dict[k] for k in x_meas_dict.keys()]).flatten()
-
-        def sol_dict(free, states, unknown_trajectories, num_nodes):
-            """Returns a dictionary that has SymPy dynamic symbols mapped to
-            the solution.
-
-            Parameters
-            ==========
-            free : array_like, shape(n*N + q*N,)
-                The free optimization variables.
-            states : iterable of dynamicsymbols
-                The system's states in the same order provided to Problem.
-            unknown_trajectories : iterable of dynamicsymbols
-                The system's unknown trajectories in the same order as Problem
-                contains.
-            num_nodes : int
-                The number of nodes in the optimization problem.
-
-            Returns
-            =======
-            d : dictionary
-                Maps dynamicsymbols to array of shape(N,)
-
-            """
-            n = len(states)
-            q = len(unknown_trajectories)
-
-            x, r, _ = parse_free(free, n, q, num_nodes)
-
-            d = {}
-            for symbol, array in zip(states, x):
-                d[symbol] = array
-            for symbol, array in zip(unknown_trajectories, r):
-                d[symbol] = array
-            return d
 
 
         #Weigths set to 1 until now
