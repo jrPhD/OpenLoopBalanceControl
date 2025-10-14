@@ -59,6 +59,12 @@ def set_model(data: DataStorage):
     bicycle_rider = SimBicycleRider("bicycle_rider")
     #bicycle_rider = bm.BicycleRider("bicycle_rider")
     bicycle_rider.bicycle = bicycle
+    
+    # Fr = 
+    
+    
+    # bicycle.front_tire.add_load_groups(me.Force(bicycle.front_tire.contact_point, Fr*bicycle.front_frame.frame.x))
+    # bicycle.rear_tire.add_load_groups()
 
     # Set up the Rider
     if data.metadata.model_upper_body == True:
