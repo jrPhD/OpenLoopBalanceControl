@@ -31,7 +31,7 @@ from sympy import Symbol
 
 # from CYINTIA import cyclist, set_axes_equal #My cyclist inertia toolbox
 
-def sol_dict(free, states, unknown_trajectories, num_nodes):
+def sol_dict(prob, free):
     """Returns a dictionary that has SymPy dynamic symbols mapped to
     the solution.
 
@@ -53,15 +53,11 @@ def sol_dict(free, states, unknown_trajectories, num_nodes):
         Maps dynamicsymbols to array of shape(N,)
 
     """
-    n = len(states)
-    q = len(unknown_trajectories)
-
-    x, r, _ = parse_free(free, n, q, num_nodes)
-
+    x, r, _ = prob.parse_free(free)
     d = {}
-    for symbol, array in zip(states, x):
+    for symbol, array in zip(prob.collocator.state_symbols, x):
         d[symbol] = array
-    for symbol, array in zip(unknown_trajectories, r):
+    for symbol, array in zip(prob.collocator.unknown_trajectories, r):
         d[symbol] = array
     return d
 
@@ -286,6 +282,8 @@ class OLDC_Solver():
 
         def obj(prob, free):
             """Minimize the error in all of the states."""
+            d = sol_dict(prob, free)
+            print(d[prob.collocator.state_symbols[0]])
 
             # C_yaw = (x_meas_dict['yaw_angle_q3'] - free[2*NUM_NODES:3*NUM_NODES])**2
             # C_roll = (x_meas_dict['roll_angle_q4'] - free[3*NUM_NODES:4*NUM_NODES])**2
@@ -349,6 +347,8 @@ class OLDC_Solver():
                 DESCRIPTION.
 
             """
+            d = sol_dict(prob, free)
+            print(d[prob.collocator.state_symbols[0]])
 
             grad = np.zeros_like(free)
 
