@@ -37,15 +37,10 @@ def sol_dict(prob, free):
 
     Parameters
     ==========
+    prob : Problem
+        Instance of an opty Problem.
     free : array_like, shape(n*N + q*N,)
         The free optimization variables.
-    states : iterable of dynamicsymbols
-        The system's states in the same order provided to Problem.
-    unknown_trajectories : iterable of dynamicsymbols
-        The system's unknown trajectories in the same order as Problem
-        contains.
-    num_nodes : int
-        The number of nodes in the optimization problem.
 
     Returns
     =======
