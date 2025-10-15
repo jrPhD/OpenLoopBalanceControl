@@ -279,6 +279,7 @@ class OLDC_Solver():
         K_head_acc = 0
         K_head_gyr_X = 10
         K_speed = 1000
+        K_torque = 1
 
         def obj(prob, free):
             """Minimize the error in all of the states."""
@@ -323,14 +324,19 @@ class OLDC_Solver():
             C_Gyr_y_H = (x_meas_dict['Gyr_y_H'] - free[24*NUM_NODES:25*NUM_NODES])**2
             C_Gyr_z_H = (x_meas_dict['Gyr_z_H'] - free[25*NUM_NODES:26*NUM_NODES])**2
 
-            J = K_angles*(np.sum(C_yaw + C_roll + C_steer))
+            #include torque to objective function
+            C_torso_torque = free[26*NUM_NODES:27*NUM_NODES]**2
+            C_pelvis_torque = free[27*NUM_NODES:28*NUM_NODES]**2
+            C_pedaling_torque = free[28*NUM_NODES:29*NUM_NODES]**2
+
+            J = (K_angles*np.sum(C_yaw + C_roll + C_steer)
             + K_angle_rates*np.sum(C_roll_rate + C_yaw_rate + C_steer_rate)
             + K_head_gyr_X*np.sum(C_Gyr_x_H)
             + K_speed*np.sum(C_speed)
             + K_head_acc*np.sum(C_Acc_y_H)
+            + K_torque*np.sum(C_torso_torque + C_pelvis_torque + C_pedaling_torque))
 
             return interval*J
-
 
         def obj_grad(prob, free):
             """
@@ -404,6 +410,9 @@ class OLDC_Solver():
             grad[24*NUM_NODES:25*NUM_NODES] = 2.0*interval*0*(free[24*NUM_NODES:25*NUM_NODES] - x_meas_dict['Gyr_y_H'])
             grad[25*NUM_NODES:26*NUM_NODES] = 2.0*interval*0*(free[25*NUM_NODES:26*NUM_NODES] - x_meas_dict['Gyr_z_H'])
 
+            grad[26*NUM_NODES:27*NUM_NODES] = 2.0*interval*K_torque*grad[26*NUM_NODES:27*NUM_NODES]
+            grad[27*NUM_NODES:28*NUM_NODES] = 2.0*interval*K_torque*grad[27*NUM_NODES:28*NUM_NODES]
+            grad[28*NUM_NODES:29*NUM_NODES] = 2.0*interval*K_torque*grad[28*NUM_NODES:29*NUM_NODES]
 
             return grad
 
@@ -591,12 +600,38 @@ class OLDC_Solver():
 
     def load_results_for_initial_guess(self, results_path):
 
-
         with open(f'{results_path}.pkl', 'rb') as file:
             dict_loaded = pickle.load(file)
 
-        self.initial_guess = dict_loaded['solution']
-        print('Older solution imported as initial guess')
+        self.dict_loaded = dict_loaded
+
+
+        loaded_var_names = list(self.dict_loaded['metadata'].x)
+        loaded_input_var_names = list(self.dict_loaded['metadata'].input_vars)
+        loaded_all_var = np.array(loaded_var_names + loaded_input_var_names)
+        loaded_num_nodes = self.dict_loaded['problem']['num_nodes']
+
+        if self.NUM_NODES != loaded_num_nodes:
+            raise ValueError(f"Missmatch in num_nodes, current num_nodes is {self.NUM_NODES} while loaded one is {loaded_num_nodes}")
+
+
+        loaded_solution = self.dict_loaded['solution'].reshape(len(loaded_var_names) + len(loaded_input_var_names), loaded_num_nodes)
+
+
+        current_var_names = list(self.data.x)
+        current_input_var_names = list(self.data.input_vars)
+
+        for k, var in enumerate(current_var_names + current_input_var_names):
+            if var in loaded_all_var:
+                var_index = np.argwhere(loaded_all_var == var)
+
+
+                self.initial_guess[k:k+self.NUM_NODES] = loaded_solution[var_index]
+                print('Previous solution loaded for:',var)
+
+
+        # self.initial_guess = dict_loaded['solution']
+        # print('Older solution imported as initial guess')
 
 
 
@@ -854,14 +889,18 @@ ids = OLDC_Solver(f'data/Hand_off_on_experiment/part_{n_part}_Hands_Off_On.csv',
 ids.select_trial([54, 60, 62, 67, 69, 75, 77, 83, 85])
 # ids.solve_save_plot_all_trials()
 
-res_path = 'results/2025_10_07_22_28_32_part_4_trial_54/2025_10_07_22_28_32_part_4_trial_54'
+res_path = 'results/2025_09_25_10_43_33_part_4_trial_54/2025_09_25_10_43_33_part_4_trial_54'
 ids.TEST(res_path)
 
-print(ids.data.x)
+# print(ids.data.x)
 
 ids.load_results_for_initial_guess(res_path)
 ids.solve_and_save()
 ids.plot_results()
+
+
+#cr=0.01221
+
 
 # ids.load_results(res_path)
 # ids.plot_results()
