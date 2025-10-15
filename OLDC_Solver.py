@@ -284,8 +284,12 @@ class OLDC_Solver():
         K_head_gyr_X = 10
         K_speed = 1000
 
-        def obj(free):
+        def obj(prob, free):
             """Minimize the error in all of the states."""
+            d = sol_dict(free, prob.collocator.state_symbols,
+                         prob.collocator.unknown_trajectories,
+                         prob.collocator.num_collocation_nodes)
+            print(d[prob.collocator.state_symbols[0]])
 
             # C_yaw = (x_meas_dict['yaw_angle_q3'] - free[2*NUM_NODES:3*NUM_NODES])**2
             # C_roll = (x_meas_dict['roll_angle_q4'] - free[3*NUM_NODES:4*NUM_NODES])**2
@@ -334,7 +338,7 @@ class OLDC_Solver():
             return interval*J
 
 
-        def obj_grad(free):
+        def obj_grad(prob, free):
             """
             Gradient of the objective function
 
@@ -349,7 +353,10 @@ class OLDC_Solver():
                 DESCRIPTION.
 
             """
-
+            d = sol_dict(free, prob.collocator.state_symbols,
+                         prob.collocator.unknown_trajectories,
+                         prob.collocator.num_collocation_nodes)
+            print(d[prob.collocator.state_symbols[0]])
 
             grad = np.zeros_like(free)
 
@@ -454,6 +461,10 @@ class OLDC_Solver():
             time_symbol=me.dynamicsymbols._t,
             integration_method='midpoint'
             )
+
+        # now override the objective and gradient methods
+        self.problem.objective = obj
+        self.problem.gradient = obj_grad
 
         max_item = 50000
 
