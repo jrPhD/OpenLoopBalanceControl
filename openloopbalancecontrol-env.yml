@@ -4,24 +4,24 @@ name: openloopbalancecontrol
 channels:
   - conda-forge
 dependencies:
-  - bicycleparameters
+  - bicycleparameters ==1.3.0
   - cloudpickle
-  - cyipopt
-  - cython
+  - cyipopt ==1.6.1
+  - cython ==3.1.5
   - ipython
   - matplotlib
   - numpy
   - pandas
   - pillow
   - pip
-  - scienceplots
-  - scikits.odes
+  - scienceplots ==2.1.1
+  - scikits.odes ==3.1.1
   - scipy
   - setuptools
-  - symbrim
-  - symmeplot
-  - sympy
-  - uncertainties
-  - yeadon
+  - symbrim ==0.1.0
+  - symmeplot ==0.2.1
+  - sympy ==1.14.0
+  - uncertainties  ==3.2.3
+  - yeadon ==1.5.0
   - pip:
     - git+https://github.com/csu-hmc/opty#egg=opty
