@@ -31,7 +31,7 @@ from sympy import Symbol
 
 # from CYINTIA import cyclist, set_axes_equal #My cyclist inertia toolbox
 
-def sol_dict(prob, free):
+def sol_dict(prob, free, str_as_keys=False):
     """Returns a dictionary that has SymPy dynamic symbols mapped to
     the solution.
 
@@ -41,6 +41,9 @@ def sol_dict(prob, free):
         Instance of an opty Problem.
     free : array_like, shape(n*N + q*N,)
         The free optimization variables.
+    str_as_keys : boolean
+        If True, the dictionary key will be a string version of the function of
+        time.
 
     Returns
     =======
@@ -51,9 +54,17 @@ def sol_dict(prob, free):
     x, r, _ = prob.parse_free(free)
     d = {}
     for symbol, array in zip(prob.collocator.state_symbols, x):
-        d[symbol] = array
+        if str_as_keys:
+            k = symbol.__class__.name
+        else:
+            k = symbol
+        d[k] = array
     for symbol, array in zip(prob.collocator.unknown_input_trajectories, r):
-        d[symbol] = array
+        if str_as_keys:
+            k = symbol.__class__.name
+        else:
+            k = symbol
+        d[k] = array
     return d
 
 
@@ -278,8 +289,7 @@ class OLDC_Solver():
 
         def obj(prob, free):
             """Minimize the error in all of the states."""
-            d = sol_dict(prob, free)
-            print(d[prob.collocator.state_symbols[0]])
+            d = sol_dict(prob, free, str_as_keys=True)
 
             # C_yaw = (x_meas_dict['yaw_angle_q3'] - free[2*NUM_NODES:3*NUM_NODES])**2
             # C_roll = (x_meas_dict['roll_angle_q4'] - free[3*NUM_NODES:4*NUM_NODES])**2
@@ -300,7 +310,8 @@ class OLDC_Solver():
             # C_Gyr_y_H = (x_meas_dict['Gyr_y_H'] - free[22*NUM_NODES:23*NUM_NODES])**2
             # C_Gyr_z_H = (x_meas_dict['Gyr_z_H'] - free[23*NUM_NODES:24*NUM_NODES])**2
 
-            C_yaw = (x_meas_dict['yaw_angle_q3'] - free[2*NUM_NODES:3*NUM_NODES])**2
+            #C_yaw = (x_meas_dict['yaw_angle_q3'] - free[2*NUM_NODES:3*NUM_NODES])**2
+            C_yaw = (x_meas_dict['yaw_angle_q3'] - d['q3'])**2
             C_roll = (x_meas_dict['roll_angle_q4'] - free[3*NUM_NODES:4*NUM_NODES])**2
             C_steer = (x_meas_dict['steer_angle_q7'] - free[5*NUM_NODES:6*NUM_NODES])**2
 
@@ -348,8 +359,7 @@ class OLDC_Solver():
                 DESCRIPTION.
 
             """
-            d = sol_dict(prob, free)
-            print(d[prob.collocator.state_symbols[0]])
+            d = sol_dict(prob, free, str_as_keys=True)
 
             grad = np.zeros_like(free)
 
