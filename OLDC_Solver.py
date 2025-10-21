@@ -422,26 +422,19 @@ class OLDC_Solver():
             return grad
 
         #I haven't use bounds so far because it tends to make the opti diverge
+        
+        bounds = {
+             'q1(t)': (-0.2,  35),
+             'q2(t)': (-4, 4),
+             'q3(t)': (-np.deg2rad(45), np.deg2rad(45)),  # bicycle yaw
+             'q4(t)': (-np.deg2rad(25), np.deg2rad(25)),    # bicycle roll
+             'q5(t)': (np.deg2rad(10), np.deg2rad(40)),     # bicycle pitch
 
-        # bounds = {
-        #     'q1(t)': (-0.2,  data.metadata.straight_length ),
-        #     'q2(t)': (-3, 3),
-        #     'q3(t)': (-np.deg2rad(180), np.deg2rad(180)),  # bicycle yaw
-        #     'q4(t)': (-np.deg2rad(45), np.deg2rad(45)),    # bicycle roll
-        #     'q5(t)': (np.deg2rad(10), np.deg2rad(40)),     # bicycle pitch
-        #     'q6(t)': (-200.0, 10.0),                       # rear wheel
-        #     'q7(t)': (-np.deg2rad(70), np.deg2rad(70)),    # steering
-        #     'q8(t)': (-200.0, 10.0),
-        #     'u1(t)': (-2, 10.0),
-        #     'u2(t)': (-10.0, 10.0),
-        #     'u3(t)': (-5.0, 5.0),
-        #     'u4(t)': (-2.5, 2.5),
-        #     'u5(t)': (-1.0, 1.0),
-        #     'u6(t)': (-30.0, 5.0),
-        #     'u7(t)': (-3.0, 3.0),
-        #     'u8(t)': (-30.0, 5.0),
-        #     'torsojoint_q(t)': (np.deg2rad(-60), np.deg2rad(60)),
-        #     'torsojoint_u(t)': (np.deg2rad(-90), np.deg2rad(90))}
+             'q7(t)': (-np.deg2rad(25), np.deg2rad(25)),    # steering
+             'q8(t)': (-200.0, 10.0),
+
+             'torsojoint_q(t)': (np.deg2rad(-20), np.deg2rad(20)),
+}
 
 
         # bounds = {self.data.rider.torsojoint.q[0]: (np.deg2rad(-180), np.deg2rad(180))}
@@ -463,7 +456,7 @@ class OLDC_Solver():
             interval,
             known_parameter_map = self.data.constants,
             # instance_constraints=data.constraints.instance_constraints,
-            # bounds= bounds,
+            bounds= bounds,
             time_symbol=me.dynamicsymbols._t,
             integration_method='midpoint'
             )
