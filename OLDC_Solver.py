@@ -52,7 +52,7 @@ def sol_dict(prob, free):
     d = {}
     for symbol, array in zip(prob.collocator.state_symbols, x):
         d[symbol] = array
-    for symbol, array in zip(prob.collocator.unknown_trajectories, r):
+    for symbol, array in zip(prob.collocator.unknown_input_trajectories, r):
         d[symbol] = array
     return d
 
@@ -590,7 +590,6 @@ class OLDC_Solver():
 
         # index = self.n_trial
         # for sig_name in self.data.x:
-
 
 
     def load_results_for_initial_guess(self, results_path):
