@@ -269,7 +269,7 @@ def set_model(data: DataStorage):
             nesd.symbols["c"] = sm.Symbol('c')
             nesd.symbols["q_ref"] = sm.Symbol('q_ref')
         else:
-            None        
+            None
     if data.metadata.model_legs == True:
         bicycle.symbols["gear_ratio"] = sm.Symbol("gear_ratio")
 
@@ -404,22 +404,31 @@ def set_model(data: DataStorage):
     system.apply_uniform_gravity(-g * bicycle.ground.get_normal(bicycle.ground.origin))
 
     #JR
-    
+
     if data.metadata.pedaling_torque:
         print('Padaling torque included')
         ped_torque = me.dynamicsymbols("T_ped")
         system.add_actuators(me.TorqueActuator(
-            ped_torque,     bicycle.rear_wheel.rotation_axis,  
-            bicycle.rear_wheel.frame, bicycle.rear_frame.wheel_hub.frame)) 
+            ped_torque,     bicycle.rear_wheel.rotation_axis,
+            bicycle.rear_wheel.frame, bicycle.rear_frame.wheel_hub.frame))
         input_vars = input_vars.col_join(sm.Matrix([ped_torque]))
-        
-        
+
+    # constant torque friction (Coulomb), only valid for bicycle going
+    # forwards!
+    # from schwalbe marathon plus on bicyclerollingresistance.com
+    rolling_resistance_torque = 2.2  # Nm
+    system.add_actuators(me.TorqueActuator(
+        -rolling_resistance_torque,  # opposite sign of pedaling torque
+        bicycle.rear_wheel.rotation_axis,
+        bicycle.rear_wheel.frame,
+        bicycle.rear_frame.wheel_hub.frame))
+
     if data.metadata.extra_roll_torque:
         print('extra seat_torque included')
         extra_roll_torque = me.dynamicsymbols("T_ext_roll")
         system.add_actuators(me.TorqueActuator(extra_roll_torque,
             bicycle_rider.rider.pelvis.x,  # bicycle_rider.rider.pelvis.x,
-            bicycle.rear_frame.saddle.frame, bicycle.ground.frame)) 
+            bicycle.rear_frame.saddle.frame, bicycle.ground.frame))
         input_vars = input_vars.col_join(sm.Matrix([extra_roll_torque]))
 
 
@@ -905,7 +914,7 @@ def set_model(data: DataStorage):
             cse=True)(*val_dict.values())
         i_rear = rear_body.central_inertia.to_matrix(rear_body.frame)
         constants[rear_body.mass] += float(additional_mass.xreplace(val_dict))
-        
+
         for idx in [(0, 0), (1, 1), (2, 2), (2, 0)]:
             constants[i_rear[idx]] += float(extra_i_vals[idx])
 
@@ -916,84 +925,84 @@ def set_model(data: DataStorage):
         data.rider = rider
     data.system = system
     data.eoms = eoms
-    
+
     # data.input_vars = sm.ImmutableMatrix(sorted(input_vars, key=lambda ri: ri.name))
     # #v_angles = sm.ImmutableMatrix(angles)
     # #print(type(input_vars), type(v_angles))
     # #data.angles = sm.ImmutableMatrix(sorted(v_angles, key=lambda ri: ri.name))
     # print('the data.input_vars thing is ->', data.input_vars)
-    
+
     # print('------------')
     # print(data.metadata.part_personalized_constants.keys())
-    
+
     # for key in data.metadata.part_personalized_constants.keys():
     #     try:
     # constants.update(data.metadata.part_personalized_constants)
         # except:
         #     print('Error',f'{key}','have not been over written')
     # constants['']
-        
+
     # print(constants.keys())
-    
+
     data.constants = constants
-    
+
     #Express angular velocity of head frame
-    
+
     head_body = rider.head.body
-    
+
     ang_vel_mat_head = rider.head.frame.ang_vel_in(system.frame).to_matrix(rider.head.frame)
     acc_mat_head = head_body.masscenter.acc(system.frame).to_matrix(rider.head.frame)
     acc_mat_head = acc_mat_head - g*system.frame.z.to_matrix(rider.head.frame)
-    
+
     mAx = acc_mat_head[0]
     mAy = acc_mat_head[1]
     mAz = acc_mat_head[2]
-    
+
     mWx = ang_vel_mat_head[0]
     mWy = ang_vel_mat_head[1]
     mWz = ang_vel_mat_head[2]
-    
+
     ax, ay, az = me.dynamicsymbols('a_x, a_y, a_z')
     omega_x, omega_y, omega_z = me.dynamicsymbols('omega_x, omega_y, omega_z')
-    
+
     data.eoms = data.eoms.col_join(sm.Matrix([ax - mAx, ay - mAy, az - mAz]))
     data.eoms = data.eoms.col_join(sm.Matrix([omega_x - mWx, omega_y - mWy, omega_z - mWz]))
-    
+
     for symb in [ax, ay, az, omega_x, omega_y, omega_z]:
         system.add_speeds(symb, independent=False)
     # input_vars = input_vars.col_join(sm.Matrix([ax, ay, az, omega_x, omega_y, omega_z]))
 
-    # input_vars = input_vars + [ax, ay, az, omega_x, omega_y, omega_z] 
+    # input_vars = input_vars + [ax, ay, az, omega_x, omega_y, omega_z]
     data.input_vars = sm.ImmutableMatrix(sorted(input_vars, key=lambda ri: ri.name))
 
     print('the data.input_vars are ->', data.input_vars)
-    
+
     # return(ang_vel_mat_head, acc_mat_head)
-    
+
     # print('------------')
-    
+
     # print(data.constants)
-    
 
 
-    
-    
-    
-    
+
+
+
+
+
 
 def set_simulator(data: DataStorage) -> None:
     simulator = Simulator(data.system)
-    
+
     # for key in data.metadata.part_personalized_constants.keys():
     #     try:
     #         data.constants[f'{key}'] = data.metadata.part_personalized_constants[f'{key}']
     #     except:
     #         print('Error',f'{key}','have not been over written')
-        
+
 
     # print('ello')
-    
-    
+
+
     simulator.constants = data.constants
     simulator.inputs = {ri: lambda t, x: 0.0 for ri in data.input_vars}
     if data.metadata.task == data.metadata.task.PERTURBED_CYCLING:
