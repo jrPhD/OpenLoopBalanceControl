@@ -3,6 +3,7 @@
 name: openloopbalancecontrol
 channels:
   - conda-forge
+  - nodefaults  # only source from conda-forge
 dependencies:
   - bicycleparameters ==1.3.0
   - cloudpickle
