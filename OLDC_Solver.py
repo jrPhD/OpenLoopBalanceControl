@@ -885,11 +885,11 @@ ids.select_trial([54, 60, 62, 67, 69, 75, 77, 83, 85])
 # ids.solve_save_plot_all_trials()
 
 res_path = 'results/2025_09_25_10_43_33_part_4_trial_54/2025_09_25_10_43_33_part_4_trial_54'
-ids.TEST(res_path)
+# ids.TEST(res_path)
 
 # print(ids.data.x)
-
-ids.load_results_for_initial_guess(res_path)
+ids.initialize_problem(54)
+# ids.load_results_for_initial_guess(res_path)
 ids.solve_and_save()
 ids.plot_results()
 
