@@ -78,3 +78,4 @@ venv.bak/
 *.svg
 *.html
 animation_frames/
+fig/
