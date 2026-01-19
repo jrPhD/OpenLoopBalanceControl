@@ -859,6 +859,43 @@ def create_animation2(data: DataStorage, output: str
 
     return fig, ax, ani
 
+def create_animation_meas(data: DataStorage, x_animate: np.array, output: str
+                     ) -> tuple[plt.Figure, plt.Axes, FuncAnimation]:
+    x_eval = CubicSpline(data.time_array, x_animate.T)
+    
+    inputs_fake = np.zeros((len(data.input_vars), len(data.time_array)))
+    data.solution = x_animate
+    
+    r_eval = CubicSpline(data.time_array, inputs_fake.T)
+    p, p_vals = zip(*data.constants.items())
+
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"}, figsize=(20, 20))
+    plotter = Plotter.from_model(data.bicycle_rider, ax=ax)
+    plotter.lambdify_system((data.x[:], data.input_vars[:], p))
+    plotter.evaluate_system(x_eval(0), r_eval(0), p_vals)
+    plotter.plot()
+    _plot_ground(data, plotter)
+    # Set explicit limits based on your data range for better layout control
+    ax.set_xlim([-3, 3])  # Adjust these limits as needed
+    ax.set_ylim([-3, 3])
+    ax.set_zlim([-3, 3])
+
+    ax.invert_zaxis()
+    ax.invert_yaxis()
+    ax.view_init(7, 0)
+    ax.set_aspect("auto")  # Set aspect to auto for 3D stability
+    ax.axis("off")
+
+    fps = 30
+    ani = plotter.animate(
+        lambda ti: (x_eval(ti), r_eval(ti), p_vals),
+        frames=np.arange(0, data.time_array[-1], 1 / fps),
+        blit=False)
+    html_writer = HTMLWriter()
+    ani.save(output if output.endswith(".html") else output + ".html", writer=html_writer)
+
+    return fig, ax, ani
+
 def bike_following_animation(data: DataStorage, output: str, angly=None, elevv=None) -> tuple[plt.Figure, plt.Axes, FuncAnimation]:
 
     plt.rcParams['animation.convert_path'] = r"C:\ImageMagick-7.1.1-47-Q16-HDRI-x64-dll\magick.exe"

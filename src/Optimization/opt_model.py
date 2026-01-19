@@ -965,11 +965,11 @@ def set_model(data: DataStorage):
     ax, ay, az = me.dynamicsymbols('a_x, a_y, a_z')
     omega_x, omega_y, omega_z = me.dynamicsymbols('omega_x, omega_y, omega_z')
 
-    data.eoms = data.eoms.col_join(sm.Matrix([ax - mAx, ay - mAy, az - mAz]))
-    data.eoms = data.eoms.col_join(sm.Matrix([omega_x - mWx, omega_y - mWy, omega_z - mWz]))
+    # data.eoms = data.eoms.col_join(sm.Matrix([ax - mAx, ay - mAy, az - mAz]))
+    # data.eoms = data.eoms.col_join(sm.Matrix([omega_x - mWx, omega_y - mWy, omega_z - mWz]))
 
-    for symb in [ax, ay, az, omega_x, omega_y, omega_z]:
-        system.add_speeds(symb, independent=False)
+    # for symb in [ax, ay, az, omega_x, omega_y, omega_z]:
+    #     system.add_speeds(symb, independent=False)
     # input_vars = input_vars.col_join(sm.Matrix([ax, ay, az, omega_x, omega_y, omega_z]))
 
     # input_vars = input_vars + [ax, ay, az, omega_x, omega_y, omega_z]
