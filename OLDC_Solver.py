@@ -590,22 +590,44 @@ class OLDC_solver():
             # grad[28*NUM_NODES:29*NUM_NODES] = 2.0*interval*K_torque*grad[28*NUM_NODES:29*NUM_NODES]
 
             return grad
-
-        #I haven't use bounds so far because it tends to make the opti diverge
         
-            """
-            bounds = {
-             'q1(t)': (-0.2,  35),
-             'q2(t)': (-4, 4),
-             'q3(t)': (-np.deg2rad(45), np.deg2rad(45)),  # bicycle yaw
-             'q4(t)': (-np.deg2rad(25), np.deg2rad(25)),    # bicycle roll
-             'q5(t)': (np.deg2rad(10), np.deg2rad(40)),     # bicycle pitch
+        q1,q2,q3,q4,q6,q7,q8,seat_q,q5 = model.data.x[:9]
+        u4,u6,u7, seat_u,u1, u2, u3, u5, u8 = model.data.x[9:]
+        T_roll, T_ped, T_sls = model.data.input_vars
+        
+        
+        u1_mean = np.mean(model.x_meas_dict['speed'])        
+        param_str = {str(param) : value for param, value in zip(model.data.constants.keys(),model.data.constants.values() )}
+        
+        wheel_radius = param_str['rear_wheel_r']
+        
+        bounds = {
+         q1: (-0.2,  u1_mean*model.DURATION*1.2),
+         q2: (-4, 4),
+         q3: (-np.deg2rad(45), np.deg2rad(45)),  # bicycle yaw
+         q4: (-np.deg2rad(25), np.deg2rad(25)),    # bicycle roll
+         q5: (-1.0, 1.0),     # bicycle pitch
+         q6: (-1.2*u1_mean*model.DURATION/wheel_radius, 0), # wheel angle
+         q7: (-np.deg2rad(25), np.deg2rad(25)),    # steering angle
+         q8: (-1.2*u1_mean*model.DURATION/wheel_radius, 0), #wheel angle
 
-             'q7(t)': (-np.deg2rad(25), np.deg2rad(25)),    # steering
-             'q8(t)': (-200.0, 10.0),
+         u1: (0.0, 10.0), #longitudinal speed
+         u2: (-5.0, 5.0), #lateral speed
+         # u3: (-2.0, 2.0), #yaw angular rate
+         # u4: (-4.0, 4.0), #roll angular rate
+         # u5: (-4.0, 4.0), #pitch angular rate
+         # u6: (-20.0, 0.0), #wheel angular rate
+         # u7: (-4.0, 4.0), #steer angular rate
+         # u8: (-20.0, 0.0), #wheel angular rate
+         # T_roll: (-300, 300),
+         # T_ped : (-300, 300),
+         # T_sls : (-300, 300)
+         
+         # 'q8(t)': (-200.0, 10.0),
 
-             'torsojoint_q(t)': (np.deg2rad(-20), np.deg2rad(20)),
-            } """
+         # 'torsojoint_q(t)': (np.deg2rad(-20), np.deg2rad(20)),
+        } 
+        
 
 
         # bounds = {self.data.rider.torsojoint.q[0]: (np.deg2rad(-180), np.deg2rad(180))}
@@ -627,7 +649,7 @@ class OLDC_solver():
             model.interval,
             known_parameter_map = model.data.constants,
             # instance_constraints=data.constraints.instance_constraints,
-            # bounds= bounds
+            bounds= bounds,
             time_symbol=me.dynamicsymbols._t,
             integration_method='midpoint'
             )
@@ -1084,8 +1106,9 @@ class OLDC_solver():
 PATH = 'C:/Users/ronne/Documents/Recherche/OpenLoopBalanceControl/data/mocap/csv/'
 # run = '2050'
 # f'states_{run}'
-Runs = ['3043','3044','3045','3046','3047','3048','3049','3050']
-Runs = ['2043','2044','2045','2046','2047','2048','2049','2050']
+# Runs = ['3043','3044','3045','3046','3047','3048','3049','3050']
+# Runs = ['2043','2044','2045','2046','2047','2048','2049','2050']
+Runs = ['2043']
 
 
 for run in Runs:
@@ -1094,6 +1117,7 @@ for run in Runs:
     # model.plot_measurments_animation()
     problem = OLDC_solver(model)
     problem.solve_and_save()
+problem.plot_res_type_1(0,'','fig')
 # problem.plot_results()
 #cr=0.01221
 
