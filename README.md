@@ -18,12 +18,12 @@ Complexity of the model can be adjusted : rigid rider, leaning rider, more advan
 - compare torque control metrics to gaze metrics
 
 ## TO DO
-- Include head accelerations to the model
-- Pin or Spherical joint for the head? 
-- Add some bounds (currently have none)?
-- Maybe improve the initial guess, have you ever thougth of doing some basic regressions from previously solved similar problems?
-- Scale models to participants
-- Run optim, fix millions of bugs?
-- Post processing the control actions (deciding how to describe control actions)
-- Run the stats
+- make a rigid rider model
+- generate synthetic data with a leaning rider, ie: we know the torques and the motion and we test our method
+- run the method on real data :
+- hands-off cycling, do we get a very low steer torque?
+- data with steer torque sensor, compute accuracy
+- data with chest cast, do we get a very low roll torque?
+- find correlations between accuracy and tracking performance
+- run Morris analysis with bicycle parameters
 
