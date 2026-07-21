@@ -18,10 +18,10 @@ Complexity of the model can be adjusted : rigid rider, leaning rider, more advan
 - compare torque control metrics to gaze metrics
 
 ## TO DO
-- make a rigid rider model
+- make a rigid rider model -> Done
 - generate synthetic data with a leaning rider, ie: we know the torques and the motion and we test our method
 - run the method on real data :
-- hands-off cycling, do we get a very low steer torque?
+- hands-off cycling, do we get a very low steer torque? -> We get full steer torque, most controllabe input
 - data with steer torque sensor, compute accuracy
 - data with chest cast, do we get a very low roll torque?
 - find correlations between accuracy and tracking performance
