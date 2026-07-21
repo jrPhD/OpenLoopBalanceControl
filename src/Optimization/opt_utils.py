@@ -826,15 +826,16 @@ def create_animation(data: DataStorage, output: str
     """
     return fig, ax, ani
 
-def create_animation2(data: DataStorage, output: str
-                     ) -> tuple[plt.Figure, plt.Axes, FuncAnimation]:
-    x_eval = CubicSpline(data.time_array, data.solution_state.T)
-    r_eval = CubicSpline(data.time_array, data.solution_input.T)
-    p, p_vals = zip(*data.constants.items())
+def create_animation2(bicycle_rider, 
+                      x : np.array, input_vars : np.array , output: str
+                     , constants : dict) -> tuple[plt.Figure, plt.Axes, FuncAnimation]:
+    x_eval = CubicSpline(time_array, solution_state.T)
+    r_eval = CubicSpline(time_array, solution_input.T)
+    p, p_vals = zip(*constants.items())
 
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"}, figsize=(20, 20))
-    plotter = Plotter.from_model(data.bicycle_rider, ax=ax)
-    plotter.lambdify_system((data.x[:], data.input_vars[:], p))
+    plotter = Plotter.from_model(bicycle_rider, ax=ax)
+    plotter.lambdify_system((x[:], input_vars[:], p))
     plotter.evaluate_system(x_eval(0), r_eval(0), p_vals)
     plotter.plot()
     _plot_ground(data, plotter)
