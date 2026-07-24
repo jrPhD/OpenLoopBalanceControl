@@ -19,7 +19,7 @@ from matplotlib.animation import FuncAnimation, HTMLWriter, PillowWriter, FFMpeg
 
 
 from symbrim.utilities.plotting import Plotter
-
+from scipy.signal import butter, filtfilt
 
 def animate_solution(t_simu, x_opt, r_opt, bicycle, x, r, p, ani_name):
 
@@ -67,3 +67,18 @@ def animate_solution(t_simu, x_opt, r_opt, bicycle, x, r, p, ani_name):
     
     html_writer = HTMLWriter()
     ani.save(ani_name if ani_name.endswith(".html") else ani_name + ".html", writer=html_writer)
+
+
+
+def butter_bandpass_filter(data, lowcut, highcut, fs, order=4):
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype='band')
+    return filtfilt(b, a, data)
+
+def butter_lowpass_filter(data, highcut, fs, order=4):
+    nyq = 0.5 * fs
+    high = highcut / nyq
+    b, a = butter(order, high, btype='low')
+    return filtfilt(b, a, data)

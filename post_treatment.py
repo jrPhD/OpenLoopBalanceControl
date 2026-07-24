@@ -204,7 +204,7 @@ cols_to_extract = df_indicators.columns[-3:]  # RMS_T_sls, RMS_T_ext_roll, RMS_T
 
 df_new = df_indicators[cols_to_extract].melt(var_name='metric', value_name='value')
 
-sns.boxplot(df_indicators, x='metric', y='value')
+sns.boxplot(df_new, x='metric', y='value')
 
 
 
