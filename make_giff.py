@@ -18,8 +18,8 @@ def make_gif(frame_folder, giff_name, n_loop):
     frame_one.save(f"{giff_name[:-4]}.gif", format="GIF", append_images=frames,
                    save_all=True, duration=5, loop=n_loop)
     print('Giff generated')
-    
-    
-    
-    
+
+
+
+
 make_gif(path, 'giff', 4)

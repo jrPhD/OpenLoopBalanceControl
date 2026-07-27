@@ -53,14 +53,14 @@ r_names = ['right foot',
 'rear wheel contact point', 'front wheel contact']
 
 for run in imported_runInfo[imported_runInfo['run']>2000]['run']:
-    
+
     state_file_name = f'states{str(run)}q.npy'
     state_file_array = np.load(PATH + state_file_name)
     tSteps = state_file_array.shape[1]
     t = np.linspace(0, 59.99, tSteps)
     df_state = pd.DataFrame(state_file_array.T, columns = qName)
     df_state['time'] = t
-    
+
     df_state.to_csv(f'states_{str(run)}.csv')
     print('CSV file of',run,'saved')
 

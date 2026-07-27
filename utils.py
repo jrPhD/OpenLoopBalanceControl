@@ -58,13 +58,13 @@ def animate_solution(t_simu, x_opt, r_opt, bicycle, x, r, p, ani_name):
     # ani = plotter.animate(
     #     lambda ti: (x_eval(ti), r_eval(ti), dis_eval(ti), param_vals), frames=np.arange(0, t_simu[-1], 1 / fps), blit=False
     # )
-    
+
     ani = plotter.animate(
         lambda ti: (x_eval(ti), r_eval(ti), param_vals), frames=np.arange(0, t_simu[-1], 1 / fps), blit=False
     )
-    
+
     display(HTML(ani.to_jshtml(fps=fps)))
-    
+
     html_writer = HTMLWriter()
     ani.save(ani_name if ani_name.endswith(".html") else ani_name + ".html", writer=html_writer)
 
