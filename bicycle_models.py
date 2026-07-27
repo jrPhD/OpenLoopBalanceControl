@@ -66,8 +66,10 @@ def generate_model(model_name, config):
     g = sm.symbols("g")
     system.apply_uniform_gravity(-g * normal)
     
-    
-    pedaling_torque = me.dynamicsymbols(f"pedaling_torque")
+    m_rider = sm.symbols('m_rider')    
+    system.add_loads(me.Force(bicycle.rear_frame.saddle.point, -g*m_rider*normal))
+        
+    pedaling_torque = me.dynamicsymbols("pedaling_torque")
     system.add_actuators(
         me.TorqueActuator(
             pedaling_torque,
@@ -97,23 +99,29 @@ def generate_model(model_name, config):
         
         r = r.col_join(sm.Matrix([steer_torque]))
         
-    if config['roll_torque'] == True :
+    if config['roll_control'] == True :
         
         
-        roll_torque = me.dynamicsymbols("roll_torque")
+        roll_moment = me.dynamicsymbols("M_x")
         
         system.add_actuators(
             me.TorqueActuator(
-                roll_torque,
+                roll_moment,
                 bicycle.rear_frame.body.frame.x,
                 bicycle.ground.frame,
                 bicycle.rear_frame.body.frame,
             )
         )
         
-        r = r.col_join(sm.Matrix([roll_torque]))
 
-    
+
+        rider_saddle_force_y = me.dynamicsymbols("F_y")
+        rider_saddle_force_z = me.dynamicsymbols("F_z")
+        system.add_loads(me.Force(bicycle.rear_frame.saddle.point, rider_saddle_force_y*bicycle.rear_frame.saddle.frame.y))
+        system.add_loads(me.Force(bicycle.rear_frame.saddle.point, rider_saddle_force_z*bicycle.rear_frame.saddle.frame.z))
+
+
+        r = r.col_join(sm.Matrix([roll_moment, rider_saddle_force_y, rider_saddle_force_z]))
 
     
 
@@ -151,6 +159,8 @@ def generate_model(model_name, config):
     
     constants = bicycle.get_param_values(bike_params)
     constants[g] = 9.81  # Don't forget to specify the gravitational constant.
+    
+    constants[m_rider] = 80
     
     # print("\n\nConstants of the model:")
     # print(constants)
@@ -215,7 +225,7 @@ if __name__ == "__main__":
 
     pass
 
-    config = {'roll_torque' : True,
+    config = {'roll_control' : True,
               'steer_torque' : True
         }
     

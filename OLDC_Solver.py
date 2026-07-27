@@ -162,8 +162,8 @@ class OLDC_model():
                             'steer_acc' :       np.zeros(len(df_trial)),
                            } #Include here the signals used to feed the opti
             
-            self.config['steer_torque'] = False
-            self.config['roll_torque'] = False
+            # self.config['steer_torque'] = False
+            self.config['roll_control'] = False
 
         
         
@@ -397,6 +397,7 @@ class OLDC_solver():
         #Weigths set to 1 until now
         K_angles = 15
         K_angle_rates = 1
+        K_effort = 1
         
         NUM_NODES = model.NUM_NODES
         self.NUM_NODES = NUM_NODES
@@ -480,22 +481,22 @@ class OLDC_solver():
         q1, q2, q3, q4, q5, q6, q7, q8 = model.x[:8]
         u1, u2, u3, u4, u5, u6, u7, u8 = model.x[8:]
         
-        if model.config['steer_torque'] == False and model.config['roll_torque'] == False : 
+        if model.config['steer_torque'] == False and model.config['roll_control'] == False : 
         
             T_ped = model.r
             
-        if model.config['steer_torque'] == True and model.config['roll_torque'] == True : 
+        if model.config['steer_torque'] == True and model.config['roll_control'] == True : 
             
-            T_ped, T_steer, T_roll = model.r
+            T_ped, T_steer, M_x, F_y, F_z = model.r
             
-        if model.config['steer_torque'] == True and model.config['roll_torque'] == False : 
+        if model.config['steer_torque'] == True and model.config['roll_control'] == False : 
                 
             T_ped, T_steer = model.r
             
         
-        if model.config['steer_torque'] == False and model.config['roll_torque'] == True : 
+        if model.config['steer_torque'] == False and model.config['roll_control'] == True : 
                 
-            T_ped, T_roll = model.r
+            T_ped, M_x, F_y, F_z = model.r
                 
                 
         
@@ -547,8 +548,10 @@ class OLDC_solver():
         if model.config['steer_torque'] == True:
             bounds[T_steer] = (-25, 25)
             
-        if model.config['roll_torque'] == True:
-            bounds[T_roll] = (-100, 100)
+        if model.config['roll_control'] == True:
+            bounds[M_x] = (-100, 100)
+            bounds[F_y] = (-100, 100)
+            bounds[F_z] = (-100, 100)
 
 
 
@@ -1007,7 +1010,7 @@ PATH = 'D:/Users/ronne/Documents/4_side_quest/OpenLoopBalanceControl/data/Moore_
 # Runs = ['2043','2044','2045','2046','2047','2048','2049','2050']
 Runs = ['2005']
 
-config = {'roll_torque' : True,
+config = {'roll_control' : True,
           'steer_torque' : True,
           'N_sampling' : 1,
           'filtering' : {'use_filtering' : True,
@@ -1033,21 +1036,21 @@ for run in Runs:
     model.initialize_model(null_state_solving=True)
     problem = OLDC_solver(model, 1)
     problem.solve_and_save()
-    new_initial_solution = problem.solution
-    problem.plot_res_type_1(0, '', 'fig')
+    # new_initial_solution = problem.solution
+    # problem.plot_res_type_1(0, '', 'fig')
 
     
     
-    model.initialize_model(null_state_solving=False)
-    problem = OLDC_solver(model, 1, new_initial_solution)
-    problem.solve_and_save()
+    # model.initialize_model(null_state_solving=False)
+    # problem = OLDC_solver(model, 1, new_initial_solution)
+    # problem.solve_and_save()
     
     # new_initial_solution = problem.solution
     # model.initialize_model()
     # problem = OLDC_solver(model, 1)
     # problem.solve_and_save()
     
-problem.plot_res_type_1(0, '', 'fig')
+# problem.plot_res_type_1(0, '', 'fig')
 # problem.plot_results()
 
 
