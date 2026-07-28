@@ -100,7 +100,7 @@ def simulate_system(bicycle, system):
         if k in pydy_sys.constants_symbols:
             pydy_sys.constants[k] = v
 
-    initial_speed = 4.6  # m/s
+    initial_speed = 2.6  # m/s
     initial_roll_rate = 0.5  # rad/s
 
     # TODO : Why is q8 in the holonomic constraint?
@@ -136,11 +136,21 @@ def simulate_system(bicycle, system):
         u8: -initial_speed/pydy_sys.constants[rf],
     }
 
+    def control(x, t):
+        T4 = 0.0
+        T6 = -10.0
+        u4 = x[8]
+        T7 = 5.0*u4
+        return np.array([T4, T6, T7])
+
+    T4, T6, T7 = me.dynamicsymbols('T4, T6, T7')
+    pydy_sys.specifieds = {(T4, T6, T7): control}
+
     fps = 30  # frames per second
     duration = 10.0  # seconds
     pydy_sys.times = np.linspace(0.0, duration, num=int(duration*fps))
 
-    return pydy_sys.integrate()
+    return pydy_sys
 
 
 def generate_bicycle_rider_model(upper_body=False, legs=False, arms=False):
@@ -227,7 +237,7 @@ def generate_bicycle_rider_model(upper_body=False, legs=False, arms=False):
         me.TorqueActuator(
             roll_torque,
             yaw_frame.x,
-            yaw_frame,
+            bicycle.rear_frame.wheel_hub.frame,
             bicycle.ground.frame,
         )
     )
