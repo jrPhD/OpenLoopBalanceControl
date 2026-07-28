@@ -17,21 +17,21 @@ import pickle
 import platform
 import warnings
 
-import numpy as np
-
-import sympy as sm
-import sympy.physics.mechanics as me
-from sympy.physics.mechanics import System
-
-import symbrim
-import symbrim as sb
 from symbrim.bicycle import RigidRearFrameMoore, WhippleBicycleMoore
 from symbrim.brim import SideLeanSeatSpringDamper
 from symbrim.rider import PinElbowTorque, SphericalShoulderTorque
+from sympy.physics.mechanics import System
 from sympy.utilities.lambdify import lambdify
-
+from pydy.system import System as PyDySystem
+from scipy.optimize import fsolve
 import bicycleparameters as bp
+import numpy as np
+import symbrim
+import symbrim as sb
+import sympy as sm
+import sympy.physics.mechanics as me
 
+BPDATADIR = "/home/moorepants/Data/bicycle-parameters"
 
 """
 model variations:
@@ -62,6 +62,85 @@ just set to zero if you don't want to use them.
 """
 
 TIME_SYM = me.dynamicsymbols._t
+
+
+def simulate_system(bicycle, system):
+
+    bike_params = bp.Bicycle("Browser", pathToData=BPDATADIR, forceRawCalc=True)
+    # TODO: This is failing:
+    #bike_params.add_rider("Jason", reCalc=True)
+    constants_def = bicycle.get_param_values(bike_params)
+    # TODO : g should be retrieved from the bicycle model
+    g = sm.symbols('g')
+    constants_def[g] = 9.81
+
+    q1, q2, q3, q4, q6, q7, q8, q5 = system.q
+    u4, u6, u7, u1, u2, u3, u5, u8 = system.u
+    # get_all_symbols() seems to only return geometry
+    (d2,
+     d3,
+     front_frame_d6,
+     front_frame_d7,
+     front_frame_d8,
+     front_frame_l3,
+     front_frame_l4,
+     rf,
+     d1,
+     rear_frame_d4,
+     rear_frame_d5,
+     rear_frame_l1,
+     rear_frame_l2,
+     rear_frame_l_bbx,
+     rear_frame_l_bbz,
+     rr) = list(sm.ordered(list(bicycle.get_all_symbols())))
+
+    pydy_sys = PyDySystem(system.eom_method)
+
+    for k, v in constants_def.items():
+        if k in pydy_sys.constants_symbols:
+            pydy_sys.constants[k] = v
+
+    initial_speed = 4.6  # m/s
+    initial_roll_rate = 0.5  # rad/s
+
+    # TODO : Why is q8 in the holonomic constraint?
+    eval_holonomic = sm.lambdify((q5, q4, q7, q8, d1, d2, d3, rf, rr),
+                                 system.holonomic_constraints)
+    def eval_hol(q5, q4, q7, q8, d1, d2, d3, rf, rr):
+        return eval_holonomic(q5, q4, q7, q8, d1, d2, d3, rf, rr).squeeze()
+
+    initial_pitch_angle = fsolve(eval_hol, 0.0,
+                                 args=(0.0,  # q4
+                                       0.0,  # q7
+                                       0.0,  # q8
+                                       pydy_sys.constants[d1],
+                                       pydy_sys.constants[d2],
+                                       pydy_sys.constants[d3],
+                                       pydy_sys.constants[rf],
+                                       pydy_sys.constants[rr]))[0]
+
+    pydy_sys.initial_conditions = {
+        q1: 0.0,
+        q2: 0.0,
+        q3: 0.0,
+        q4: 0.0,
+        q5: initial_pitch_angle,
+        q7: 0.0,
+        u1: initial_speed,
+        u2: 0.0,
+        u3: 0.0,
+        u4: initial_roll_rate,
+        u5: 0.0,
+        u6: -initial_speed/pydy_sys.constants[rr],
+        u7: 0.0,
+        u8: -initial_speed/pydy_sys.constants[rf],
+    }
+
+    fps = 30  # frames per second
+    duration = 10.0  # seconds
+    pydy_sys.times = np.linspace(0.0, duration, num=int(duration*fps))
+
+    return pydy_sys.integrate()
 
 
 def generate_bicycle_rider_model(upper_body=False, legs=False, arms=False):
@@ -99,6 +178,8 @@ def generate_bicycle_rider_model(upper_body=False, legs=False, arms=False):
     bicycle.rear_tire = symbrim.NonHolonomicTire("rear_tire")
 
     bicycle.define_all()
+    # NOTE : This system seems to be a copy of the bicycle.system, i.e. if you
+    # mutate the returned system
     system = bicycle.to_system()
 
     # TODO: bicycle.ground.origin is not used internally in get_normal(), so
@@ -180,7 +261,7 @@ def generate_bicycle_rider_model(upper_body=False, legs=False, arms=False):
         #Fz,
     #])
 
-    return system
+    return bicycle, system
 
 
 def generate_model(model_name, config):
