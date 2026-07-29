@@ -92,14 +92,7 @@ def generate_bicycle_rider_model(upper_body=False, legs=False, arms=False):
     bicycle.front_tire = symbrim.NonHolonomicTire("front_tire")
     bicycle.rear_tire = symbrim.NonHolonomicTire("rear_tire")
 
-    if upper_body:
-        rider = symbrim.Rider("rider")
-        rider.pelvis = symbrim.PlanarPelvis("pelvis")
-        bicycle_rider = symbrim.BicycleRider("bicycle_rider")
-        bicycle_rider.bicycle = bicycle
-        bicycle_rider.rider = rider
-    else:
-        bicycle_rider = bicycle
+    bicycle_rider = bicycle
 
     bicycle_rider.define_all()
     # NOTE : This system seems to be a copy of the bicycle.system, i.e. if you
@@ -381,6 +374,3 @@ if __name__ == "__main__":
     t, x, r, eoms, p, bicycle = generate_model(model_name, config)
 
     # export_constants(constants)
-
-
-
