@@ -192,7 +192,11 @@ def create_pydy_system(bicycle, system):
         dep_vars=(q5, u2, u3, u5, u6, u8))
 
     T4, T6, T7 = me.dynamicsymbols('T4, T6, T7')
-    pydy_sys.specifieds = {(T4, T6, T7): compute_torques_lqr}
+    Fx, Fy, Fz, T4, T6, T7 = sm.ordered(list(pydy_sys.specifieds_symbols))
+    pydy_sys.specifieds = {
+        (T4, T6, T7): compute_torques_lqr,
+        Fy: lambda x, t: 50.0 if t > 1.0 and t < 2.0 else 0.0,
+    }
 
     fps = 60  # frames per second
     duration = 6.0  # seconds
