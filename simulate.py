@@ -1,19 +1,72 @@
+from bicycleparameters.models import Meijaard2007WithFeedbackModel
+from bicycleparameters.parameter_dicts import meijaard2007_browser_jason
+from bicycleparameters.parameter_sets import Meijaard2007ParameterSet
 from pydy.system import System as PyDySystem
+from scipy.linalg import solve_continuous_are
+from symbrim.utilities.plotting import Plotter
 import bicycleparameters as bp
 import matplotlib.pyplot as plt
 import numpy as np
 import sympy as sm
 import sympy.physics.mechanics as me
-from bicycleparameters.parameter_dicts import meijaard2007_browser_jason
-from bicycleparameters.models import Meijaard2007WithFeedbackModel
-from bicycleparameters.parameter_sets import Meijaard2007ParameterSet
-from scipy.linalg import solve_continuous_are
 
 # TODO : This needs to be loaded from a user configuration.
 BPDATADIR = "/home/moorepants/Data/bicycle-parameters"
 
 
-def evaluate_torques_lqr(trajectories):
+def animate_motion(bicycle, pydy_sys, x, r):
+    """Returns a matplotlib animation.
+
+    Parameters
+    ==========
+    bicycle : symbrim.WhippleBicycle
+        Intialized bicycle model.
+    pydy_sys : pydy.system.System
+        Initialized PyDy system.
+    x : array_like, shape(n, 16)
+        State trajectories.
+    r : array_like, shape(n, 6)
+        Input trajectories.
+
+    """
+
+    # TODO : All constants needed to animate the bicycle are not present in
+    # pydy_sys.constants, so I have to regenerate this here instead of using
+    # those stored in pydy_sys.constants.
+    bike_params = bp.Bicycle("Browser", pathToData=BPDATADIR,
+                             forceRawCalc=True)
+    constants = bicycle.get_param_values(bike_params)
+    p = np.array(list(constants.keys()))
+    p_vals = np.array(list(constants.values()))
+
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"}, figsize=(8, 8))
+
+    plotter = Plotter.from_model(bicycle, ax=ax)
+    plotter.lambdify_system((pydy_sys.states,
+                             pydy_sys.specifieds_symbols,
+                             p))
+    plotter.evaluate_system(x[0, :], r[0, :], p_vals)
+    plotter.plot()
+    q1, q2 = x[:, 0], x[:, 1]
+    X, Y = np.meshgrid(np.arange(np.min(q1) - 1.0, np.max(q1) + 1.0, 0.5),
+                       np.arange(np.min(q2) - 1.0, np.max(q2) + 1.0, 0.5))
+    ax.plot_wireframe(X, Y, np.zeros_like(X), color="k", alpha=0.3, rstride=1,
+                      cstride=1)
+    ax.invert_zaxis()
+    ax.invert_yaxis()
+    ax.set_xlim(X.min(), X.max())
+    ax.set_ylim(Y.min(), Y.max())
+    ax.view_init(19, 14)
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+    ani = plotter.animate(lambda i: (x[i], r[i], p_vals),
+                          frames=range(x.shape[0]),
+                          blit=False)
+    return ani
+
+
+def evaluate_inputs(time, trajectories):
     """Returns the torque trajectories computed by the LQR controller.
 
     Parameters
@@ -25,37 +78,50 @@ def evaluate_torques_lqr(trajectories):
     Returns
     =======
     u : ndarray, shape(n, 3)
-        Torque trajectories [T4, T6, T7]
+        Torque trajectories [Fx, Fy, Fz, T4, T6, T7]
 
     """
-    u = np.zeros((trajectories.shape[0], 3))
+    u = np.zeros((trajectories.shape[0], 6))
     for i, xi in enumerate(trajectories):
-        u[i, :] = compute_torques_lqr(xi, 0.0)
+        u[i, :] = compute_inputs(xi, time[i])
     return u
 
 
-def plot_trajectories(sys, trajectories):
-    """Returns axes to three figures: coordinates, speeds, and torques."""
+def plot_traj(sys, trajectories):
+    """Returns axes to four figures: coordinates, speeds, inputs, and rear
+    contact trajectory."""
+
+    q_units = ['m', 'm', 'rad', 'rad', 'rad', 'rad', 'rad', 'rad']
+    u_units = ['rad/s', 'rad/s', 'rad/s', 'm/s', 'm/s', 'rad/s', 'rad/s',
+               'rad/s']
 
     n = len(sys.states)
     fig, axesq = plt.subplots(n//2, 1, sharex=True, layout='constrained')
     fig.set_size_inches(16, n//2)
-    for ax, traj, s in zip(axesq, trajectories.T[:n//2], sys.states[:n//2]):
-        ax.plot(sys.times, traj)
+    for ax, traj, s, unit in zip(axesq, trajectories.T[:n//2],
+                                 sys.states[:n//2], q_units):
+        if unit == 'rad':
+            ax.plot(sys.times, np.rad2deg(traj))
+        else:
+            ax.plot(sys.times, traj)
         ax.set_ylabel(sm.latex(s, mode='inline'))
     axesq[-1].set_xlabel('Time [s]')
 
     fig, axesu = plt.subplots(n//2, 1, sharex=True, layout='constrained')
     fig.set_size_inches(16, n//2)
-    for ax, traj, s in zip(axesu, trajectories.T[n//2:], sys.states[n//2:]):
-        ax.plot(sys.times, traj)
+    for ax, traj, s, unit in zip(axesu, trajectories.T[n//2:],
+                                 sys.states[n//2:], u_units):
+        if unit == 'rad/s':
+            ax.plot(sys.times, np.rad2deg(traj))
+        else:
+            ax.plot(sys.times, traj)
         ax.set_ylabel(sm.latex(s, mode='inline'))
     axesu[-1].set_xlabel('Time [s]')
 
-    u = evaluate_torques_lqr(trajectories)
+    u = evaluate_inputs(sys.times, trajectories)
 
-    fig, axes = plt.subplots(3, 1, sharex=True, layout='constrained')
-    fig.set_size_inches(16, 3)
+    fig, axes = plt.subplots(6, 1, sharex=True, layout='constrained')
+    fig.set_size_inches(16, 6)
     for ax, traj, s in zip(axes, u.T, list(sys.specifieds.keys())[0]):
         ax.plot(sys.times, traj)
         ax.set_ylabel(sm.latex(s, mode='inline'))
@@ -130,8 +196,8 @@ def compute_torques_lqr(x, t):
 
     Returns
     =======
-    T : ndarray, shape(3,)
-        Torques: [T4, T6, T7]
+    T : ndarray, shape(2,)
+        Torques: [T4, T7]
 
     """
     q3, u1, u2 = x[2], x[11], x[12]
@@ -141,8 +207,34 @@ def compute_torques_lqr(x, t):
     x_min = x[[3, 5, 8, 10]]  # q4, q7, u4, u7
     K = compute_controller_gains(meijaard2007_browser_jason, speed)
     T4, T7 = -K @ x_min.T
+    return np.array([T4, T7])
+
+
+def compute_inputs(x, t):
+    """
+    Parameters
+    ==========
+    x : ndarray, shape(16,)
+        State vector:
+        [q1, q2, q3, q4, q6, q7, q8, q5, u4, u6, u7, u1, u2, u3, u5, u8]
+    t : float
+        Time
+
+    Returns
+    =======
+    T : ndarray, shape(6,)
+        Torques: [Fx, Fy, Fz, T4, T6, T7]
+
+    """
+    T4, T7 = compute_torques_lqr(x, t)
     T6 = -3.0
-    return np.array([T4, T6, T7])
+    Fx = 0.0
+    if t > 1.0 and t < 2.0:
+        Fy = 50.0
+    else:
+        Fy = 0.0
+    Fz = 0.0
+    return np.array([Fx, Fy, Fz, T4, T6, T7])
 
 
 def create_pydy_system(bicycle, system):
@@ -159,6 +251,8 @@ def create_pydy_system(bicycle, system):
 
     pydy_sys = PyDySystem(system.eom_method)
 
+    # TODO : It would be helpful if PyDy System let you add constants that are
+    # not present in the model, just for storage purposes for later use.
     for k, v in constants_def.items():
         if k in pydy_sys.constants_symbols:
             pydy_sys.constants[k] = v
@@ -194,8 +288,7 @@ def create_pydy_system(bicycle, system):
     T4, T6, T7 = me.dynamicsymbols('T4, T6, T7')
     Fx, Fy, Fz, T4, T6, T7 = sm.ordered(list(pydy_sys.specifieds_symbols))
     pydy_sys.specifieds = {
-        (T4, T6, T7): compute_torques_lqr,
-        Fy: lambda x, t: 50.0 if t > 1.0 and t < 2.0 else 0.0,
+        (Fx, Fy, Fz, T4, T6, T7): compute_inputs,
     }
 
     fps = 60  # frames per second
@@ -214,6 +307,7 @@ if __name__ == "__main__":
     pydy_sys.constants
     K = compute_controller_gains(meijaard2007_browser_jason, 1.0)
     traj = pydy_sys.integrate()
-    torque_traj = evaluate_torques_lqr(traj)
-    plot_trajectories(pydy_sys, traj)
+    input_traj = evaluate_inputs(pydy_sys.times, traj)
+    plot_traj(pydy_sys, traj)
+    ani = animate_motion(bicycle, pydy_sys, traj, input_traj)
     plt.show()
