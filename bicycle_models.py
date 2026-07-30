@@ -1,41 +1,169 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Jul 20 14:39:22 2026
-
-@author: ronne
-"""
-
-
-# =============================================================================
-# The Default Bicycle Model
-# From https://mechmotum.github.io/symbrim/tutorials/my_first_bicycle.html
-# Let's start with a very basic non-linear bicycle without rider
-# =============================================================================
-
-
-
-
 import pickle
 import platform
 import warnings
 from IPython.display import display
-import numpy as np
-#import casadi as cas
 
 import sympy as sm
 import sympy.physics.mechanics as me
-from sympy.physics.mechanics import System
 
-import symbrim as sb
-from symbrim.bicycle import RigidRearFrameMoore, WhippleBicycleMoore
-from symbrim.brim import SideLeanSeatSpringDamper
-from symbrim.rider import PinElbowTorque, SphericalShoulderTorque
-from sympy.utilities.lambdify import lambdify
-
-from typing import Dict, Any
 import bicycleparameters as bp
+from symbrim.bicycle import RigidRearFrameMoore, WhippleBicycleMoore
+import symbrim
+import symbrim as sb
 
 
+"""
+model variations:
+
+- rigid rider
+
+ - steer torque (between rear frame and front frame)
+ - roll torque (between rear frame and ground)
+ - propulsion torque (between rear frame & rear wheel)
+ - seat force (between seat and ground)
+
+- leaning rider
+
+  - lean torque (between rider & rear frame)
+
+- pedaling legs (moves given gear ratio)
+
+- arms
+
+- control
+
+  - roll rate feedback (or maybe just do full state LQR) to steer and lean
+
+So, we have inertial effects (leaning rider, pedaling legs, steering arms)
+which need new coordinates. The loads acan be added the same to all models,
+just set to zero if you don't want to use them.
+
+"""
+
+TIME_SYM = me.dynamicsymbols._t
+
+
+def generate_bicycle_rider_model(upper_body=False, legs=False, arms=False):
+    """
+    Parameters
+    ==========
+    upper_body : boolean
+        If true, a leaning upper body (inversted compound pendulum) will be
+        added to the model.
+    legs : boolean
+        If true, two pedaling legs will be added to the model for leg inertial
+        effects. Pedaling cadence will be a function of a gear ratio parameter
+        relating rear wheel rate to cadence.
+    arms : boolean
+        If true, two arms will be added to the model for inertial effect of the
+        arms.
+
+    Returns
+    =======
+    system : sympy.physics.mechanics.system.System
+
+    """
+
+    bicycle = symbrim.WhippleBicycle('bicycle')
+    bicycle.ground = symbrim.FlatGround("ground")
+
+    bicycle.front_frame = symbrim.RigidFrontFrame("front_frame")
+    bicycle.rear_frame = symbrim.RigidRearFrame.from_convention(
+        "moore", "rear_frame")
+
+    bicycle.front_wheel = symbrim.KnifeEdgeWheel("front_wheel")
+    bicycle.rear_wheel = symbrim.KnifeEdgeWheel("rear_wheel")
+
+    bicycle.front_tire = symbrim.NonHolonomicTire("front_tire")
+    bicycle.rear_tire = symbrim.NonHolonomicTire("rear_tire")
+
+    bicycle_rider = bicycle
+
+    bicycle_rider.define_all()
+    # NOTE : This system seems to be a copy of the bicycle.system, i.e. if you
+    # mutate the returned system
+    system = bicycle_rider.to_system()
+
+    # TODO: bicycle.ground.origin is not used internally in get_normal(), so
+    # not clear what it is for, see
+    # https://github.com/mechmotum/symbrim/issues/158
+    # It seems that `normal` points opposite of gravity (from ground to sky),
+    # but that is not the Moore convention, which points downward.
+    g = sm.symbols("g")
+    normal = bicycle.ground.get_normal(bicycle.ground.origin)
+    system.apply_uniform_gravity(-g*normal)
+
+    # Torque applied between rear wheel and rear frame to propel the bicycle.
+    # Positive torque pushes rear frame in positive motion about axis.
+    # TODO : Which direction is the positive direction?
+    pedaling_torque = me.dynamicsymbols("T6")
+    system.add_actuators(
+        me.TorqueActuator(
+            pedaling_torque,
+            bicycle.rear_frame.wheel_hub.axis,
+            bicycle.rear_wheel.frame,
+            # TODO : Why rear_frame.wheel_hub.frame and not just
+            # rear_frame.frame?
+            bicycle.rear_frame.wheel_hub.frame,
+        )
+    )
+
+    # Torque applied between the front frame and rear frame about the steer
+    # axis to steer the bicycle.
+    steer_torque = me.dynamicsymbols("T7")
+    system.add_actuators(
+        me.TorqueActuator(
+            steer_torque,
+            bicycle.rear_frame.steer_hub.axis,
+            bicycle.front_frame.steer_hub.frame,
+            bicycle.rear_frame.steer_hub.frame,
+        )
+    )
+
+    # Torque applied between the ground and the rear frame about the roll axis.
+    roll_torque = me.dynamicsymbols("T4")
+    yaw_frame = me.ReferenceFrame('yaw_frame')
+    yaw_frame.orient_axis(bicycle.ground.frame, bicycle.ground.frame.z,
+                          bicycle.q[2])
+    system.add_actuators(
+        me.TorqueActuator(
+            roll_torque,
+            yaw_frame.x,
+            bicycle.rear_frame.wheel_hub.frame,
+            bicycle.ground.frame,
+        )
+    )
+
+    # Force applied to the saddle, expressed in the rear frame unit vectors.
+    Fx, Fy, Fz = me.dynamicsymbols('F_x, F_y, F_z')
+    system.add_loads(me.Force(
+        bicycle.rear_frame.saddle.point,
+        Fx*bicycle.rear_frame.saddle.frame.x +
+        Fy*bicycle.rear_frame.saddle.frame.y +
+        Fz*bicycle.rear_frame.saddle.frame.z
+    ))
+
+    # Before forming the EoMs we need to specify which generalized coordinates
+    # and speeds are independent and which are dependent.
+    # q indep : q1, q2, q3, q4, q6, q7, q8
+    # u indep : u4, u6, u7
+    system.q_ind = [*bicycle.q[:4], *bicycle.q[5:]]
+    system.q_dep = [bicycle.q[4]]
+    system.u_ind = [bicycle.u[3], *bicycle.u[5:7]]
+    system.u_dep = [*bicycle.u[:3], bicycle.u[4], bicycle.u[7]]
+    system.validate_system()
+    system.form_eoms(constraint_solver="CRAMER")
+
+    #specifieds = sm.Matrix([
+        #roll_torque,
+        #pedaling_torque,
+        #steer_torque,
+        #Fx,
+        #Fy,
+        #Fz,
+    #])
+
+    return bicycle_rider, system
 
 
 def generate_model(model_name, config):
@@ -217,10 +345,6 @@ def export_constants(constants: dict[str, float]) -> None:
         pickle.dump(constants, f)
 
 
-
-
-
-
 if __name__ == "__main__":
 
     pass
@@ -233,6 +357,3 @@ if __name__ == "__main__":
     t, x, r, eoms, p, bicycle = generate_model(model_name, config)
 
     # export_constants(constants)
-
-
-
