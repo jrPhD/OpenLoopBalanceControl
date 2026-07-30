@@ -1,25 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Jul 20 14:39:22 2026
-
-@author: ronne
-"""
-
-
-# =============================================================================
-# The Default Bicycle Model
-# From https://mechmotum.github.io/symbrim/tutorials/my_first_bicycle.html
-# Let's start with a very basic non-linear bicycle without rider
-# =============================================================================
-
-
 import pickle
 import platform
 import warnings
 
-from symbrim.bicycle import RigidRearFrameMoore, WhippleBicycleMoore
-from symbrim.brim import SideLeanSeatSpringDamper
-from symbrim.rider import PinElbowTorque, SphericalShoulderTorque
 import bicycleparameters as bp
 import symbrim
 import symbrim as sb
@@ -356,10 +338,6 @@ def export_constants(constants: dict[str, float]) -> None:
 
     with open(full_file_name, "wb") as f:
         pickle.dump(constants, f)
-
-
-
-
 
 
 if __name__ == "__main__":
