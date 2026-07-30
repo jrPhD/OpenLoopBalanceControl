@@ -20,6 +20,7 @@ def evaluate_torques_lqr(trajectories):
     ==========
     trajectories : array_like, shape(n, 16)
         State trajectories.
+        [q1, q2, q3, q4, q6, q7, q8, q5, u4, u6, u7, u1, u2, u3, u5, u8]
 
     Returns
     =======
@@ -60,7 +61,12 @@ def plot_trajectories(sys, trajectories):
         ax.set_ylabel(sm.latex(s, mode='inline'))
     axes[-1].set_xlabel('Time [s]')
 
-    return axesq, axesu, axes
+    fig, ax_ground = plt.subplots(1, 1, layout='constrained')
+    fig.set_size_inches(8, 8)
+    ax_ground.plot(trajectories[:, 0], trajectories[:, 1])
+    ax_ground.set_aspect('equal')
+
+    return axesq, axesu, axes, ax_ground
 
 
 def compute_controller_gains(par, speed, roll=True, steer=True):
@@ -91,18 +97,20 @@ def compute_controller_gains(par, speed, roll=True, steer=True):
     par_set = Meijaard2007ParameterSet(par, True)
     model = Meijaard2007WithFeedbackModel(par_set)
     A, B = model.form_state_space_matrices(v=speed)
+    T4_sq_max, T7_sq_max = 40.0, 8.0
     if steer and roll:
         start, end = 0, 2
-        R = np.diag([1.0, 0.01])  # weight roll less than steer
+        R = np.diag([1.0/T4_sq_max**2, 1.0/T7_sq_max**2])
     elif steer and not roll:
         start, end = 1, 2
-        R = np.eye(1)
+        R = 1.0/T7_sq_max**2*np.eye(1)
     elif not steer and roll:
         start, end = 0, 1
-        R = np.eye(1)
+        R = 1.0/T4_sq_max**2*np.eye(1)
     else:
         raise ValueError('One of steer or roll must be true')
-    Q = np.eye(4)
+    #Q = np.eye(4)
+    Q = np.deg2rad(np.diag([10.0, 30.0, 10.0, 20.0]))**2
     S = solve_continuous_are(A, B[:, start:end], Q, R)
     K = np.linalg.solve(R, B[:, start:end].T @ S)
     return K
@@ -158,7 +166,7 @@ def create_pydy_system(bicycle, system):
     q1, q2, q3, q4, q6, q7, q8, q5 = system.q
     u4, u6, u7, u1, u2, u3, u5, u8 = system.u
 
-    initial_speed = 1.6  # m/s
+    initial_speed = 3.0  # m/s
     initial_roll_rate = 0.5  # rad/s
 
     pydy_sys.initial_conditions = {
@@ -186,8 +194,8 @@ def create_pydy_system(bicycle, system):
     T4, T6, T7 = me.dynamicsymbols('T4, T6, T7')
     pydy_sys.specifieds = {(T4, T6, T7): compute_torques_lqr}
 
-    fps = 30  # frames per second
-    duration = 4.0  # seconds
+    fps = 60  # frames per second
+    duration = 6.0  # seconds
     pydy_sys.times = np.linspace(0.0, duration, num=int(duration*fps))
 
     return pydy_sys
