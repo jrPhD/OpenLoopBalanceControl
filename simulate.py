@@ -1,3 +1,6 @@
+import configparser
+import os
+
 from bicycleparameters.models import Meijaard2007WithFeedbackModel
 from bicycleparameters.parameter_dicts import meijaard2007_browser_jason
 from bicycleparameters.parameter_sets import Meijaard2007ParameterSet
@@ -10,8 +13,17 @@ import numpy as np
 import sympy as sm
 import sympy.physics.mechanics as me
 
-# TODO : This needs to be loaded from a user configuration.
-BPDATADIR = "/home/moorepants/Data/bicycle-parameters"
+if os.path.exists('conf.ini'):
+    config = configparser.ConfigParser()
+    config.read('conf.ini')
+    BPDATADIR = config['config']['BPDATADIR']
+else:
+    msg = """
+Create a conf.ini file with contents:
+[config]
+BPDATADIR = /path/to/bicycleparameters/data
+"""
+    raise RuntimeError(msg)
 
 
 def animate_motion(bicycle, pydy_sys, x, r):
@@ -66,7 +78,7 @@ def animate_motion(bicycle, pydy_sys, x, r):
     return ani
 
 
-def evaluate_inputs(time, trajectories):
+def eval_input_trajectories(time, trajectories):
     """Returns the torque trajectories computed by the LQR controller.
 
     Parameters
@@ -87,9 +99,17 @@ def evaluate_inputs(time, trajectories):
     return u
 
 
-def plot_traj(sys, trajectories):
+def plot_trajectories(sys, trajectories):
     """Returns axes to four figures: coordinates, speeds, inputs, and rear
-    contact trajectory."""
+    contact trajectory.
+
+    Parameters
+    ==========
+    sys : pydy.system.System
+        Initialized PyDy System.
+    trajectories : array_like, shape(n, 16)
+
+    """
 
     q_units = ['m', 'm', 'rad', 'rad', 'rad', 'rad', 'rad', 'rad']
     u_units = ['rad/s', 'rad/s', 'rad/s', 'm/s', 'm/s', 'rad/s', 'rad/s',
@@ -118,7 +138,7 @@ def plot_traj(sys, trajectories):
         ax.set_ylabel(sm.latex(s, mode='inline'))
     axesu[-1].set_xlabel('Time [s]')
 
-    u = evaluate_inputs(sys.times, trajectories)
+    u = eval_input_trajectories(sys.times, trajectories)
 
     fig, axes = plt.subplots(6, 1, sharex=True, layout='constrained')
     fig.set_size_inches(16, 6)
@@ -196,7 +216,7 @@ def compute_torques_lqr(x, t):
 
     Returns
     =======
-    T : ndarray, shape(2,)
+    ndarray, shape(2,)
         Torques: [T4, T7]
 
     """
@@ -222,7 +242,7 @@ def compute_inputs(x, t):
 
     Returns
     =======
-    T : ndarray, shape(6,)
+    ndarray, shape(6,)
         Torques: [Fx, Fy, Fz, T4, T6, T7]
 
     """
@@ -238,7 +258,21 @@ def compute_inputs(x, t):
 
 
 def create_pydy_system(bicycle, system):
-    """Returns a PyDy System set up for simulation."""
+    """Returns a PyDy System set up for simulation.
+
+    Parameters
+    ==========
+    bicycle : symbrim.WhippleBicycle
+        Intialized bicycle model.
+    system : sympy.physics.mechanics.system.System
+        Initialized SymPy system.
+
+    Returns
+    =======
+    pydy_sys : pydy.system.System
+        Initialized PyDy system.
+
+    """
 
     bike_params = bp.Bicycle("Browser", pathToData=BPDATADIR,
                              forceRawCalc=True)
@@ -307,7 +341,7 @@ if __name__ == "__main__":
     pydy_sys.constants
     K = compute_controller_gains(meijaard2007_browser_jason, 1.0)
     traj = pydy_sys.integrate()
-    input_traj = evaluate_inputs(pydy_sys.times, traj)
-    plot_traj(pydy_sys, traj)
+    input_traj = eval_input_trajectories(pydy_sys.times, traj)
+    plot_trajectories(pydy_sys, traj)
     ani = animate_motion(bicycle, pydy_sys, traj, input_traj)
     plt.show()

@@ -12,52 +12,11 @@ import symbrim
 import symbrim as sb
 
 
-"""
-model variations:
-
-- rigid rider
-
- - steer torque (between rear frame and front frame)
- - roll torque (between rear frame and ground)
- - propulsion torque (between rear frame & rear wheel)
- - seat force (between seat and ground)
-
-- leaning rider
-
-  - lean torque (between rider & rear frame)
-
-- pedaling legs (moves given gear ratio)
-
-- arms
-
-- control
-
-  - roll rate feedback (or maybe just do full state LQR) to steer and lean
-
-So, we have inertial effects (leaning rider, pedaling legs, steering arms)
-which need new coordinates. The loads acan be added the same to all models,
-just set to zero if you don't want to use them.
-
-"""
-
 TIME_SYM = me.dynamicsymbols._t
 
 
-def generate_bicycle_rider_model(upper_body=False, legs=False, arms=False):
+def generate_bicycle_rider_model():
     """
-    Parameters
-    ==========
-    upper_body : boolean
-        If true, a leaning upper body (inversted compound pendulum) will be
-        added to the model.
-    legs : boolean
-        If true, two pedaling legs will be added to the model for leg inertial
-        effects. Pedaling cadence will be a function of a gear ratio parameter
-        relating rear wheel rate to cadence.
-    arms : boolean
-        If true, two arms will be added to the model for inertial effect of the
-        arms.
-
     Returns
     =======
     system : sympy.physics.mechanics.system.System
