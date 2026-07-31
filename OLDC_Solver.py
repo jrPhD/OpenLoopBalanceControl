@@ -249,7 +249,7 @@ class OLDC_model():
         t, x, r, eoms, p, bicycle = generate_model('model', self.config)
 
         self.x = x
-        self.eoms = eoms
+        self.eoms = eoms/100
         self.p = p
         self.r = r
         self.t = t
@@ -393,30 +393,12 @@ class OLDC_solver():
 
     #Open Loop Direct Collocation Solver
 
-    def __init__(self, model, scaling_factor, x0=None, gains=None):
-
-        if model.null_state_solving == True:
-            K_angles = 1
-            K_angle_rates = 1
-            K_effort = 1
-            K_speed = 1
+    def __init__(self, model, scaling_factor, x0=None):
             
-        else:
-            
-            if gains is not None:
-                
-                K_angles = gains['K_angles']
-                K_angle_rates = gains['K_angles_rates']
-                K_effort = gains['K_efforts']
-                K_speed = gains['K_speed']
-                
-                
-            else:
-            
-                K_angles = 1
-                K_angle_rates = 0.1
-                K_effort = 0.0001
-                K_speed = 5
+        K_angles = 2
+        K_angle_rates = 1
+        K_effort = 0.001
+        K_speed = 20
             
         NUM_NODES = model.NUM_NODES
         self.NUM_NODES = NUM_NODES
@@ -470,7 +452,7 @@ class OLDC_solver():
                   round(K_speed*np.sum(C_speed), 5), '(speed)')
 
 
-            return self.model.interval*J
+            return self.model.interval*J/100
 
         def obj_grad(prob, free):
             """
@@ -515,7 +497,7 @@ class OLDC_solver():
                 grad[19*NUM_NODES:20*NUM_NODES] = 2.0*self.model.interval*K_effort*d['F_y']
                 grad[20*NUM_NODES:21*NUM_NODES] = 2.0*self.model.interval*K_effort*d['F_z']
 
-            return grad
+            return grad/100
 
         q1, q2, q3, q4, q5, q6, q7, q8 = self.model.x[:8]
         u1, u2, u3, u4, u5, u6, u7, u8 = self.model.x[8:]
@@ -545,79 +527,51 @@ class OLDC_solver():
 
         wheel_radius = param_str['rear_wheel_r']
         
-        if self.model.null_state_solving == True:
-            
-            bounds = {
-             q1: (-0.2,  u1_mean*self.model.DURATION*1.2),
-             q2: (-10, 10),
-             q3: (-0.3, 0.3),  # bicycle yaw
-             q4: (-0.3, 0.3),    # bicycle roll
-             # q5: (-N_std*q5_std + q5_mean, q5_mean + N_std*q5_std), # bicycle pitch
-             q6: (-1.2*u1_mean*self.model.DURATION/wheel_radius, 0), # wheel angle
-             q7: (-0.3, 0.3),    # steering angle
-             q8: (-1.2*u1_mean*self.model.DURATION/wheel_radius, 0), #wheel angle
-    
-             u1: (u1_mean*0.9, u1_mean*1.1), #longitudinal speed
-             u2: (-0.5*u1_mean, 0.5*u1_mean), #lateral speed
-             u3: (-0.3, 0.3), #yaw angular rate
-             u4: (-0.3, 0.3), #roll angular rate
-             # u5: (-N_std*u5_std, N_std*u5_std), #pitch angular rate
-             # u6: (-20.0, 0.0), #wheel angular rate
-             u7: (-0.3, 0.3), #steer angular rate
-             # u8: (-20.0, 0.0), #wheel angular rate
-    
-             T_ped : (-100, 100),
-            }
-            
 
-            
-        else:
+        q3_std = np.std(self.model.x_meas_dict['yaw_angle_q3'])
+        q4_std = np.std(self.model.x_meas_dict['roll_angle_q4'])
+        q7_std = np.std(self.model.x_meas_dict['steer_angle_q7'])
+        # q5_std = np.std(model.x_meas_dict['pitch_angle_q5'])
+
+        # q5_mean = np.mean(model.x_meas_dict['pitch_angle_q5'])
 
 
-            q3_std = np.std(self.model.x_meas_dict['yaw_angle_q3'])
-            q4_std = np.std(self.model.x_meas_dict['roll_angle_q4'])
-            q7_std = np.std(self.model.x_meas_dict['steer_angle_q7'])
-            # q5_std = np.std(model.x_meas_dict['pitch_angle_q5'])
-    
-            # q5_mean = np.mean(model.x_meas_dict['pitch_angle_q5'])
-    
-    
-            u3_std = np.std(self.model.x_meas_dict['yaw_rate_u3'])
-            u4_std = np.std(self.model.x_meas_dict['roll_rate_u4'])
-            u7_std = np.std(self.model.x_meas_dict['steer_rate_u7'])
-            # u5_std = np.std(model.x_meas_dict['pitch_rate_u5'])
-    
-            N_std = 3
-    
-    
-    
-            bounds = {
-             q1: (0,  u1_mean*self.model.DURATION*1.2),
-             q2: (-5, 5),
-             q3: (-N_std*q3_std, N_std*q3_std),  # bicycle yaw
-             q4: (-N_std*q4_std, N_std*q4_std),    # bicycle roll
-             # q5: (-N_std*q5_std + q5_mean, q5_mean + N_std*q5_std), # bicycle pitch
-             q6: (-1.2*u1_mean*self.model.DURATION/wheel_radius, 0), # wheel angle
-             q7: (-N_std*q7_std, N_std*q7_std),    # steering angle
-             q8: (-1.2*u1_mean*self.model.DURATION/wheel_radius, 0), #wheel angle
-    
-             u1: (0.5*u1_mean, u1_mean*1.5), #longitudinal speed
-             u2: (-0.5*u1_mean, 0.5*u1_mean), #lateral speed
-             u3: (-N_std*u3_std, N_std*u3_std), #yaw angular rate
-             u4: (-N_std*u4_std, N_std*u4_std), #roll angular rate
-             # u5: (-N_std*u5_std, N_std*u5_std), #pitch angular rate
-             # u6: (-20.0, 0.0), #wheel angular rate
-             u7: (-N_std*u7_std, N_std*u7_std), #steer angular rate
-             # u8: (-20.0, 0.0), #wheel angular rate
-    
-             T_ped : (-50, 50),
-            }
+        u3_std = np.std(self.model.x_meas_dict['yaw_rate_u3'])
+        u4_std = np.std(self.model.x_meas_dict['roll_rate_u4'])
+        u7_std = np.std(self.model.x_meas_dict['steer_rate_u7'])
+        # u5_std = np.std(model.x_meas_dict['pitch_rate_u5'])
+
+        N_std = 3
+
+
+
+        bounds = {
+         q1: (0,  u1_mean*self.model.DURATION*1.2),
+         q2: (-5, 5),
+         q3: (-N_std*q3_std, N_std*q3_std),  # bicycle yaw
+         q4: (-N_std*q4_std, N_std*q4_std),    # bicycle roll
+         # q5: (-N_std*q5_std + q5_mean, q5_mean + N_std*q5_std), # bicycle pitch
+         q6: (-1.2*u1_mean*self.model.DURATION/wheel_radius, 0), # wheel angle
+         q7: (-N_std*q7_std, N_std*q7_std),    # steering angle
+         q8: (-1.2*u1_mean*self.model.DURATION/wheel_radius, 0), #wheel angle
+
+         u1: (0.5*u1_mean, u1_mean*1.5), #longitudinal speed
+         u2: (-0.5*u1_mean, 0.5*u1_mean), #lateral speed
+         u3: (-N_std*u3_std, N_std*u3_std), #yaw angular rate
+         u4: (-N_std*u4_std, N_std*u4_std), #roll angular rate
+         # u5: (-N_std*u5_std, N_std*u5_std), #pitch angular rate
+         # u6: (-20.0, 0.0), #wheel angular rate
+         u7: (-N_std*u7_std, N_std*u7_std), #steer angular rate
+         # u8: (-20.0, 0.0), #wheel angular rate
+
+         T_ped : (-50, 50),
+        }
 
 
         if self.model.config['steer_torque'] == True:
             bounds[T_steer] = (-50, 50)
         
-
+    
         if self.model.config['roll_control'] == True:
             bounds[M_x] = (-50, 50)
             bounds[F_y] = (-50, 50)
@@ -642,6 +596,8 @@ class OLDC_solver():
         max_item = 100000
 
         self.problem.add_option('max_iter' , max_item)
+        self.problem.add_option('tol' , 10e-8)
+
 
         if x0 is None:
 
@@ -720,10 +676,13 @@ class OLDC_solver():
         # self.data.solution_state()
         # self.data.solution_input()
 
+    def evaluate_bounds(self):
+        
+        fig, ax = plt.subplots(1)
+        sol = self.solution.reshape(self.model.x0_shape)
 
-
-
-
+        for i in range(sol.shape[0]):
+            ax.boxplot(sol[i,:])
 
     def load_results(self, results_path):
 
@@ -929,7 +888,7 @@ class OLDC_solver():
         if self.model.config['roll_control'] == True:
 
 
-            axs[1,1].plot(self.time_simu, self.solution[17*self.NUM_NODES:(17+1)*self.NUM_NODES], label = '$T_{steer}$', color = color[0])
+            # axs[1,1].plot(self.time_simu, self.solution[17*self.NUM_NODES:(17+1)*self.NUM_NODES], label = '$T_{steer}$', color = color[0])
             axs[1,1].plot(self.time_simu, self.solution[18*self.NUM_NODES:(18+1)*self.NUM_NODES], label = '$M_{x}$', color = color[1])
             axs[1,1].plot(self.time_simu, self.solution[19*self.NUM_NODES:(19+1)*self.NUM_NODES], label = '$F_{y}$', color = color[2])
             axs[1,1].plot(self.time_simu, self.solution[20*self.NUM_NODES:(20+1)*self.NUM_NODES], label = '$F_{z}$', color = color[3])
@@ -1040,7 +999,7 @@ PATH = 'D:/Users/ronne/Documents/4_side_quest/OpenLoopBalanceControl/data/Moore_
 # Runs = ['3043','3044','3045','3046','3047','3048','3049','3050']
 # Runs = ['2043','2044','2045','2046','2047','2048','2049','2050']
 Runs = ['2002']
-run = Runs[0]
+
 
 config = {'roll_control' : False,
           'steer_torque' : True,
@@ -1053,7 +1012,7 @@ config = {'roll_control' : False,
 
 from scipy.interpolate import CubicSpline
 
-for k in range(20):
+for run in Runs:
     
     ## Define a fisrt model with full steering and litte points
     
@@ -1067,7 +1026,7 @@ for k in range(20):
     psi = model_1.df_exp['yaw angle']
     
     model_1.df_exp['speed'] = (treadmill_speed + x_dot)*np.cos(psi) - y_dot*np.sin(psi)
-    model_1.initialize_model(null_state_solving=False)
+    model_1.initialize_model()
     
     problem_1 = OLDC_solver(model_1, 1)
     problem_1.solve_and_save()
@@ -1076,10 +1035,10 @@ for k in range(20):
     
     ## Define a second model with more points
     
-    config['N_sampling'] = 2
+    config['N_sampling'] = 1
     model_2 = OLDC_model(PATH, run, config)
     model_2.df_exp['speed'] = (treadmill_speed + x_dot)*np.cos(psi) - y_dot*np.sin(psi)
-    model_2.initialize_model(null_state_solving=False)
+    model_2.initialize_model()
     
     x0 = np.zeros(model_2.x0_shape)
     
@@ -1096,22 +1055,28 @@ for k in range(20):
     config['roll_control'] = True
     model_3 = OLDC_model(PATH, run, config)
     model_3.df_exp['speed'] = (treadmill_speed + x_dot)*np.cos(psi) - y_dot*np.sin(psi)
-    model_3.initialize_model(null_state_solving=False)
-    
-    
-    random_gains = np.abs(np.random.normal(1, 50, 4))
-    gains_name = ['angles','angles_rates','efforts','speed']
-    
-    for i, gain in enumerate(gains_name):
-
-    
+    model_3.initialize_model()
+    # model_3.eoms= model_3.eoms*10
+        
     x0 = np.zeros(model_3.x0_shape)
     x0[:previous_solution.shape[0], :] = previous_solution
-    problem_3 = OLDC_solver(model_3, 1, x0.flatten(), gains=gains)
+    problem_3 = OLDC_solver(model_3, 1, x0.flatten())
+    problem_3.problem.add_option('tol' , 10e-8)
+    problem_3.problem.add_option('constr_viol_tol' , 10e-6)
+    problem_3.problem.add_option('acceptable_tol' , 10e-6)
     problem_3.solve_and_save()
     problem_3.plot_res_type_1(0, '', 'fig')
-
-
+    
+    previous_solution_random = problem_3.solution.reshape(model_3.x0_shape) 
+    sol_list = []
+    
+    for k in range(10):
+    
+        previous_solution_random[-len(model_3.r):, :] += 0.1*np.sin(2*3.14*5*problem_3.time_simu + np.random.normal(0,3))
+        problem_3 = OLDC_solver(model_3, 1, previous_solution_random.flatten())
+        problem_3.solve_and_save()
+        problem_3.plot_res_type_1(0, '', 'fig')
+        sol_list.append(problem_3.info)
 
 
 
@@ -1132,7 +1097,7 @@ for k in range(20):
 
 
 
-
+# isnan = np.isnan(problem_3.problem.jacobian(problem_3.solution))
 
 
 

@@ -101,18 +101,21 @@ def generate_model(model_name, config):
 
     if config['roll_control'] == True :
 
-
         roll_moment = me.dynamicsymbols("M_x")
-
+        
+        
+        yaw_frame = me.ReferenceFrame('yaw_frame')
+        yaw_frame.orient_axis(bicycle.ground.frame, bicycle.ground.frame.z,
+                              bicycle.q[2])
+    
         system.add_actuators(
             me.TorqueActuator(
                 roll_moment,
-                bicycle.rear_frame.body.frame.x,
+                yaw_frame.x,
+                bicycle.rear_frame.wheel_hub.frame,
                 bicycle.ground.frame,
-                bicycle.rear_frame.body.frame,
             )
         )
-
 
 
         rider_saddle_force_y = me.dynamicsymbols("F_y")
