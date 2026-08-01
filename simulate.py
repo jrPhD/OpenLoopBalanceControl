@@ -42,14 +42,8 @@ def animate_motion(bicycle, pydy_sys, x, r):
 
     """
 
-    # TODO : All constants needed to animate the bicycle are not present in
-    # pydy_sys.constants, so I have to regenerate this here instead of using
-    # those stored in pydy_sys.constants.
-    bike_params = bp.Bicycle("Browser", pathToData=BPDATADIR,
-                             forceRawCalc=True)
-    constants = bicycle.get_param_values(bike_params)
-    p = np.array(list(constants.keys()))
-    p_vals = np.array(list(constants.values()))
+    p = list(pydy_sys.constants.keys())
+    p_vals = np.array(list(pydy_sys.constants.values()))
 
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"}, figsize=(8, 8))
 
@@ -276,20 +270,17 @@ def create_pydy_system(bicycle, system):
 
     bike_params = bp.Bicycle("Browser", pathToData=BPDATADIR,
                              forceRawCalc=True)
-    # TODO: This is failing:
-    #bike_params.add_rider("Jason", reCalc=True)
+    bike_params.add_rider("Jason", reCalc=True)
     constants_def = bicycle.get_param_values(bike_params)
     # TODO : g should be retrieved from the bicycle model
     g = sm.symbols('g')
     constants_def[g] = 9.81
 
-    pydy_sys = PyDySystem(system.eom_method)
-
-    # TODO : It would be helpful if PyDy System let you add constants that are
-    # not present in the model, just for storage purposes for later use.
-    for k, v in constants_def.items():
-        if k in pydy_sys.constants_symbols:
-            pydy_sys.constants[k] = v
+    # NOTE : Defines the constants symbols explicitly to allow constants not
+    # present in the equations of motion to be stored on the system.
+    pydy_sys = PyDySystem(system.eom_method,
+                          constants=constants_def,
+                          constants_symbols=list(constants_def.keys()))
 
     q1, q2, q3, q4, q6, q7, q8, q5 = system.q
     u4, u6, u7, u1, u2, u3, u5, u8 = system.u
