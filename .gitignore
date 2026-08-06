@@ -85,3 +85,6 @@ MotionCapture-master/
 results/
 data/
 figures/
+
+#Confi file
+*.ini
