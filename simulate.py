@@ -13,6 +13,8 @@ import numpy as np
 import sympy as sm
 import sympy.physics.mechanics as me
 
+from bicycle_models import generate_bicycle_rider_model
+
 if os.path.exists('conf.ini'):
     config = configparser.ConfigParser()
     config.read('conf.ini')
@@ -321,6 +323,42 @@ def create_pydy_system(bicycle, system):
     pydy_sys.times = np.linspace(0.0, duration, num=int(duration*fps))
 
     return pydy_sys
+
+def generate_synthetic_data():
+    """
+
+    Returns
+    =======
+    measured_states : dict[str: ndarray]
+        Dictionary mapping measurement time series names to arrays of
+        synthethic data.
+
+    """
+
+    bicycle, sys = generate_bicycle_rider_model()
+    pydy_sys = create_pydy_system(bicycle, sys)
+    traj = pydy_sys.integrate()
+    input_traj = eval_input_trajectories(pydy_sys.times, traj)
+    measured_states  = {
+        'time' : pydy_sys.times,
+        'yaw_angle_q3' : traj[:, 2],
+        'roll_angle_q4' : traj[:, 3],
+        'pitch_angle_q5' : traj[:, 7],
+        'steer_angle_q7' : traj[:, 5],
+        'yaw_rate_u3' : traj[:, 13],
+        'roll_rate_u4' : traj[:, 8],
+        'pitch_rate_u5' : traj[:, 14],
+        'speed' : -traj[:, 9]*pydy_sys.constants[
+            list(bicycle.rear_wheel.get_all_symbols())[0]],
+        'steer_rate_u7' : traj[:, 10],
+        'seat_force_Fx': input_traj[:, 0],
+        'seat_force_Fy': input_traj[:, 1],
+        'seat_force_Fz': input_traj[:, 2],
+        'roll_torque_T4': input_traj[:, 3],
+        'pedal_torque_T6': input_traj[:, 4],
+        'steer_torque_T7': input_traj[:, 5],
+    }
+    return measured_states
 
 
 if __name__ == "__main__":
