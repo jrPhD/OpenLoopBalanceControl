@@ -27,3 +27,55 @@ Complexity of the model can be adjusted : rigid rider, leaning rider, more advan
 - find correlations between accuracy and tracking performance
 - run Morris analysis with bicycle parameters
 
+## Installation and Usage
+
+Clone the repository where the development is done:
+
+```
+git clone git@github.com:jrPhD/OpenLoopBalanceControl
+```
+
+Install [miniforge](https://conda-forge.org/miniforge/) (or miniconda or
+anaconda). Open the command prompt (conda prompt on windows) and type:
+
+You will also need a working C compiler on your operating system. For Windows,
+you'll need the right compiler for the Python version you are using. See
+https://wiki.python.org/moin/WindowsCompilers for more info.
+
+If using Spyder, install it along with ``spyder-kernels`` in your base
+environment::
+
+```
+conda install spyder spyder-kernels
+```
+
+Install the conda environment for the gait closed loop id project:
+
+```
+cd OpenLoopBalanceControl
+conda env create -f openloopbalancecontrol-env.yml
+conda activate openloopbalancecontrol
+```
+
+If we make updates in pydy or opty (because we are using the development
+versions), you will need to either update the environment:
+
+```
+conda deactivate
+conda env update -f openloopbalancecontrol-env.yml
+conda activate openloopbalancecontrol
+```
+
+or recreate the environment:
+
+```
+conda deactivate
+conda env remove -n openloopbalancecontrol
+conda env create -f openloopbalancecontrol-env.yml
+conda activate openloopbalancecontrol
+```
+
+
+
+
+
