@@ -12,9 +12,9 @@ dependencies:
   - ipython
   - matplotlib
   - numpy
+  - packaging
   - pandas
   - pillow
-  - packaging
   - pip
   - scienceplots ==2.1.1
   - scikits.odes ==3.1.1
