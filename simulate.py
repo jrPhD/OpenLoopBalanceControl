@@ -1,8 +1,9 @@
 import configparser
 import os
+import pickle
 
 from bicycleparameters.models import Meijaard2007WithFeedbackModel
-from bicycleparameters.parameter_dicts import meijaard2007_browser_jason
+from bicycleparameters.parameter_dicts import meijaard2007_browser_jason, meijaard2007_browser
 from bicycleparameters.parameter_sets import Meijaard2007ParameterSet
 from pydy.system import System as PyDySystem
 from scipy.linalg import solve_continuous_are
@@ -14,6 +15,10 @@ import sympy as sm
 import sympy.physics.mechanics as me
 
 from bicycle_models import generate_bicycle_rider_model
+
+from utils import make_new_results_folder
+
+import pandas as pd
 
 if os.path.exists('conf.ini'):
     config = configparser.ConfigParser()
@@ -243,10 +248,11 @@ def compute_inputs(x, t):
 
     """
     T4, T7 = compute_torques_lqr(x, t)
-    T6 = -3.0
+    T4 = T4*0
+    T6 = -3.0*0
     Fx = 0.0
     if t > 1.0 and t < 2.0:
-        Fy = 50.0
+        Fy = 50.0*0
     else:
         Fy = 0.0
     Fz = 0.0
@@ -272,7 +278,7 @@ def create_pydy_system(bicycle, system):
 
     bike_params = bp.Bicycle("Browser", pathToData=BPDATADIR,
                              forceRawCalc=True)
-    bike_params.add_rider("Jason", reCalc=True)
+    # bike_params.add_rider("Jason", reCalc=True)
     constants_def = bicycle.get_param_values(bike_params)
     # TODO : g should be retrieved from the bicycle model
     g = sm.symbols('g')
@@ -341,22 +347,24 @@ def generate_synthetic_data():
     input_traj = eval_input_trajectories(pydy_sys.times, traj)
     measured_states  = {
         'time' : pydy_sys.times,
-        'yaw_angle_q3' : traj[:, 2],
-        'roll_angle_q4' : traj[:, 3],
-        'pitch_angle_q5' : traj[:, 7],
-        'steer_angle_q7' : traj[:, 5],
-        'yaw_rate_u3' : traj[:, 13],
-        'roll_rate_u4' : traj[:, 8],
-        'pitch_rate_u5' : traj[:, 14],
+        'x' : traj[:, 0],
+        'y' : traj[:, 1],
+        'yaw angle' : traj[:, 2],
+        'roll angle' : traj[:, 3],
+        'pitch angle' : traj[:, 7],
+        'steer angle' : traj[:, 5],
+        'yaw rate' : traj[:, 13],
+        'roll rate' : traj[:, 8],
+        'pitch rate' : traj[:, 14],
         'speed' : -traj[:, 9]*pydy_sys.constants[
             list(bicycle.rear_wheel.get_all_symbols())[0]],
-        'steer_rate_u7' : traj[:, 10],
-        'seat_force_Fx': input_traj[:, 0],
-        'seat_force_Fy': input_traj[:, 1],
-        'seat_force_Fz': input_traj[:, 2],
-        'roll_torque_T4': input_traj[:, 3],
-        'pedal_torque_T6': input_traj[:, 4],
-        'steer_torque_T7': input_traj[:, 5],
+        'steer rate' : traj[:, 10],
+        'seat force Fx': input_traj[:, 0],
+        'seat force Fy': input_traj[:, 1],
+        'seat force Fz': input_traj[:, 2],
+        'roll torque T4': input_traj[:, 3],
+        'pedal torque T6': input_traj[:, 4],
+        'steer torque T7': input_traj[:, 5],
     }
     return measured_states
 
@@ -368,9 +376,25 @@ if __name__ == "__main__":
     pydy_sys = create_pydy_system(bicycle, sys)
     pydy_sys.initial_conditions
     pydy_sys.constants
-    K = compute_controller_gains(meijaard2007_browser_jason, 1.0)
+    K = compute_controller_gains(meijaard2007_browser, 1.0)
     traj = pydy_sys.integrate()
     input_traj = eval_input_trajectories(pydy_sys.times, traj)
     plot_trajectories(pydy_sys, traj)
     ani = animate_motion(bicycle, pydy_sys, traj, input_traj)
     plt.show()
+
+
+
+
+if True:
+    
+    results_dict = generate_synthetic_data()
+    data = pd.DataFrame(results_dict)
+    
+    path_results_folder = make_new_results_folder('data/synthetic/')
+
+    data.to_csv(path_results_folder + 'states_and_torques.csv')
+    
+
+    
+

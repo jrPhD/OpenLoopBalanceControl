@@ -154,20 +154,31 @@ def generate_model(model_name, config):
     system.apply_uniform_gravity(-g * normal)
 
     m_rider = sm.symbols('m_rider')
-    system.add_loads(me.Force(bicycle.rear_frame.saddle.point, -g*m_rider*normal))
+    # system.add_loads(me.Force(bicycle.rear_frame.saddle.point, -g*m_rider*normal))
 
-    pedaling_torque = me.dynamicsymbols("pedaling_torque")
-    system.add_actuators(
-        me.TorqueActuator(
-            pedaling_torque,
-            bicycle.rear_frame.wheel_hub.axis,
-            bicycle.rear_wheel.frame,
-            bicycle.rear_frame.wheel_hub.frame,
-        )
-    )
+    # pedaling_torque = me.dynamicsymbols("pedaling_torque")
+    # system.add_actuators(
+    #     me.TorqueActuator(
+    #         pedaling_torque,
+    #         bicycle.rear_frame.wheel_hub.axis,
+    #         bicycle.rear_wheel.frame,
+    #         bicycle.rear_frame.wheel_hub.frame,
+    #     )
+    # )
+    
+    # system.add_actuators(
+    #     me.TorqueActuator(
+    #         1.1,
+    #         bicycle.rear_frame.wheel_hub.axis,
+    #         bicycle.rear_wheel.frame,
+    #         bicycle.rear_frame.wheel_hub.frame,
+    #     )
+    # )
 
 
-    r = sm.Matrix([pedaling_torque])
+    # r = sm.Matrix([pedaling_torque])
+    r = sm.Matrix([])
+
 
 
 
@@ -179,8 +190,8 @@ def generate_model(model_name, config):
             me.TorqueActuator(
                 steer_torque,
                 bicycle.rear_frame.steer_hub.axis,
-                bicycle.rear_frame.steer_hub.frame,
                 bicycle.front_frame.steer_hub.frame,
+                bicycle.rear_frame.steer_hub.frame,
             )
         )
 

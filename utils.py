@@ -21,6 +21,33 @@ from matplotlib.animation import FuncAnimation, HTMLWriter, PillowWriter, FFMpeg
 from symbrim.utilities.plotting import Plotter
 from scipy.signal import butter, filtfilt
 
+import os
+
+from datetime import datetime
+
+def make_new_results_folder(loc, suffixe=""):
+    """
+    make_new_results_folder
+
+
+    """
+    os.makedirs('results', exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    file_name = loc + f"{timestamp}/"
+    if suffixe:
+        file_name += f"_{suffixe}"
+    
+    try:
+        os.makedirs(file_name, exist_ok=True)
+        path = os.path.abspath(file_name)
+        print(f"File generated : {path}")
+        return file_name
+    except OSError as e:
+        print(f"Error when generating file : {e}")
+        return None
+
 def animate_solution(t_simu, x_opt, r_opt, bicycle, x, r, p, ani_name):
 
     # Create some functions to interpolate the results.
