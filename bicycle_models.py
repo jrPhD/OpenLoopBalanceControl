@@ -156,15 +156,15 @@ def generate_model(model_name, config):
     m_rider = sm.symbols('m_rider')
     # system.add_loads(me.Force(bicycle.rear_frame.saddle.point, -g*m_rider*normal))
 
-    # pedaling_torque = me.dynamicsymbols("pedaling_torque")
-    # system.add_actuators(
-    #     me.TorqueActuator(
-    #         pedaling_torque,
-    #         bicycle.rear_frame.wheel_hub.axis,
-    #         bicycle.rear_wheel.frame,
-    #         bicycle.rear_frame.wheel_hub.frame,
-    #     )
-    # )
+    pedaling_torque = me.dynamicsymbols("pedaling_torque")
+    system.add_actuators(
+        me.TorqueActuator(
+            pedaling_torque,
+            bicycle.rear_frame.wheel_hub.axis,
+            bicycle.rear_wheel.frame,
+            bicycle.rear_frame.wheel_hub.frame,
+        )
+    )
     
     # system.add_actuators(
     #     me.TorqueActuator(
@@ -176,8 +176,8 @@ def generate_model(model_name, config):
     # )
 
 
-    # r = sm.Matrix([pedaling_torque])
-    r = sm.Matrix([])
+    r = sm.Matrix([pedaling_torque])
+    # r = sm.Matrix([])
 
 
 

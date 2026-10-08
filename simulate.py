@@ -249,7 +249,7 @@ def compute_inputs(x, t):
     """
     T4, T7 = compute_torques_lqr(x, t)
     T4 = T4*0
-    T6 = -3.0*0
+    T6 = -3.0
     Fx = 0.0
     if t > 1.0 and t < 2.0:
         Fy = 50.0*0
@@ -294,7 +294,7 @@ def create_pydy_system(bicycle, system):
     u4, u6, u7, u1, u2, u3, u5, u8 = system.u
 
     initial_speed = 3.0  # m/s
-    initial_roll_rate = 0.5  # rad/s
+    initial_roll_rate = 2  # rad/s
 
     pydy_sys.initial_conditions = {
         q1: 0.0,
