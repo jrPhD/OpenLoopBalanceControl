@@ -682,6 +682,8 @@ class OLDC_solver():
             q1 : 0.0,
             q2 : 0.0,
             q3 : 0.0,
+            u1 : 3.0,
+            u2 : 0,
             u6 : -3.0/0.3,
             u8 : -3.0/0.3,
             }
@@ -704,7 +706,7 @@ class OLDC_solver():
             self.model.NUM_NODES,
             self.model.interval,
             known_parameter_map = self.model.p,
-            known_trajectory_map = known_trajectory_map,
+            # known_trajectory_map = known_trajectory_map,
             instance_constraints = instance_constraints,
             bounds = bounds,
             time_symbol = me.dynamicsymbols._t,
