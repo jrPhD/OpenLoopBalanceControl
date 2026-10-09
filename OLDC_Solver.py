@@ -444,11 +444,12 @@ class OLDC_solver():
         K_angles = 10*2*8*2
         K_angle_rates = 10*2*8*2
         K_effort = 0.1
+        K_regu = 0.1
         
         if config != None:
            K_effort = config['K_effort'] 
         
-        K_speed = 200
+        K_speed = 200*6
             
         NUM_NODES = model.NUM_NODES
         self.NUM_NODES = NUM_NODES
@@ -494,29 +495,45 @@ class OLDC_solver():
             
             # len_effort = 0
             # C_effort = np.zeros(self.NUM_NODES)
+            
+            C_regu = np.diff(d['pedaling_torque'])**2/self.model.interval**2
+            len_regu = len(C_regu)
 
             
             if self.model.config['steer_torque'] == True:
                 C_effort = C_effort + d['steer_torque']**2
                 len_effort = len_effort + len(C_effort)
                 
+                C_regu = C_regu + np.diff(d['pedaling_torque'])**2/self.model.interval**2
+                len_regu += len_regu
+
+                
             if self.model.config['roll_control'] == True:
                 C_effort = C_effort + d['M_x']**2 + d['F_y']**2 + d['F_z']**2
                 len_effort = len_effort + len(C_effort)*3
+                
+                C_regu = C_regu 
+                + np.diff(d['M_x'])**2/self.model.interval**2
+                + np.diff(d['F_y'])**2/self.model.interval**2
+                + np.diff(d['F_z'])**2/self.model.interval**2
+                
+                len_regu = len_regu + len_regu*3
 
-            
+
 
             J = (K_angles*np.sum(C_yaw*0 + C_roll + C_steer)/len_angles
-                 + K_speed*np.sum(C_speed)/len_speed
-                 + K_angle_rates*np.sum(C_roll_rate + C_yaw_rate*0 + C_steer_rate )/len_rates) + K_effort*np.sum(C_effort)/len_effort
+            + K_speed*np.sum(C_speed)/len_speed
+            + K_angle_rates*np.sum(C_roll_rate + C_yaw_rate*0 + C_steer_rate )/len_rates) + K_effort*np.sum(C_effort)/len_effort
+            + K_regu*np.sum(C_regu)/len_regu
 
-            print('J=', round(K_angles*np.sum(C_yaw + C_roll + C_steer), 5),('(angles)+'),
-                  round( K_angle_rates*np.sum(C_roll_rate + C_yaw_rate + C_steer_rate), 5), '(angles rates)',
-                  round(K_effort*np.sum(C_effort), 5), '(torques)',
-                  round(K_speed*np.sum(C_speed), 5), '(speed)')
+            print('J=', round(K_angles*np.sum(C_yaw*0 + C_roll + C_steer)/len_angles, 5),('(angles)+'),
+                  round( K_angle_rates*np.sum(C_roll_rate + C_yaw_rate*0 + C_steer_rate)/len_rates, 5), '(angles rates)',
+                  round(K_effort*np.sum(C_effort)/len_effort, 5), '(torques)',
+                  round(K_speed*np.sum(C_speed)/len_speed, 5), '(speed)',
+                  round(K_regu*np.sum(C_regu)/len_regu, 5), '(regulation)')
 
 
-            return self.model.interval*J/100
+            return self.model.interval*J/10000
 
         def obj_grad(prob, free):
             """
@@ -544,6 +561,8 @@ class OLDC_solver():
             len_rates = 2*self.NUM_NODES
             len_speed = self.NUM_NODES
             len_effort = self.NUM_NODES
+            len_reg = self.NUM_NODES-1
+
 
             grad[2*NUM_NODES:3*NUM_NODES] = 0*2.0*self.model.interval*K_angles*(d['model_q3'] - self.model.x_meas_dict['yaw_angle_q3'])/len_angles
             grad[3*NUM_NODES:4*NUM_NODES] = 2.0*self.model.interval*K_angles*(d['model_q4'] - self.model.x_meas_dict['roll_angle_q4'])/len_angles
@@ -555,26 +574,60 @@ class OLDC_solver():
             grad[14*NUM_NODES:15*NUM_NODES] = 2.0*self.model.interval*K_angle_rates*(d['model_u7'] - self.model.x_meas_dict['steer_rate_u7'])/len_rates
             # grad[12*NUM_NODES:13*NUM_NODES] = 2.0*model.interval*K_angles*(d['model_u5'] - model.x_meas_dict['pitch_rate_u5'])
 
-            # TODO: adapted if u is included again
             grad[13*NUM_NODES:14*NUM_NODES] = 2.0*self.model.interval*K_speed*(d['model_u6'] - self.model.x_meas_dict['wheel_rate'])/len_speed
 
+
+            reg_grad_ped = 2*K_regu*np.diff(d['pedaling_torque'])**2/self.model.interval**2/len_reg
+            reg_term_ped = np.zeros(self.NUM_NODES)
+            reg_term_ped[:-1] = -reg_grad_ped
+            reg_term_ped[1:] = reg_grad_ped
+
+
             grad[16*NUM_NODES:17*NUM_NODES] = 2.0*self.model.interval*K_effort*d['pedaling_torque']/len_effort
+            + self.model.interval*reg_term_ped
 
 
             if self.model.config['steer_torque'] == True:
                 len_effort = len_effort + self.NUM_NODES
-                # TODO: change index if back to T_ped
+                
+                reg_grad_steer = 2*K_regu*np.diff(d['steer_torque'])**2/self.model.interval**2/len_reg
+                reg_term_steer = np.zeros(self.NUM_NODES)
+                reg_term_steer[:-1] = -reg_grad_steer
+                reg_term_steer[1:] = reg_grad_steer
+                
                 grad[17*NUM_NODES:18*NUM_NODES] = 2.0*self.model.interval*K_effort*d['steer_torque']/len_effort
+                + self.model.interval*reg_term_steer
+
 
             if self.model.config['roll_control'] == True:
                 len_effort = len_effort + self.NUM_NODES*3
-                grad[18*NUM_NODES:19*NUM_NODES] = 2.0*self.model.interval*K_effort*d['M_x']/len_effort
-                grad[19*NUM_NODES:20*NUM_NODES] = 2.0*self.model.interval*K_effort*d['F_y']/len_effort
-                grad[20*NUM_NODES:21*NUM_NODES] = 2.0*self.model.interval*K_effort*d['F_z']/len_effort
                 
+                reg_grad_M_x = 2*K_regu*np.diff(d['M_x'])**2/self.model.interval**2/len_reg
+                reg_term_M_x = np.zeros(self.NUM_NODES)
+                reg_term_M_x[:-1] = -reg_grad_M_x
+                reg_term_M_x[1:] = reg_grad_M_x
+                
+                reg_grad_F_y = 2*K_regu*np.diff(d['F_y'])**2/self.model.interval**2/len_reg
+                reg_term_F_y = np.zeros(self.NUM_NODES)
+                reg_term_F_y[:-1] = -reg_grad_F_y
+                reg_term_F_y[1:] = reg_grad_F_y
+                
+                reg_grad_F_z = 2*K_regu*np.diff(d['F_z'])**2/self.model.interval**2/len_reg
+                reg_term_F_z = np.zeros(self.NUM_NODES)
+                reg_term_F_z[:-1] = -reg_grad_F_z
+                reg_term_F_z[1:] = reg_grad_F_z
+                
+                grad[18*NUM_NODES:19*NUM_NODES] = 2.0*self.model.interval*K_effort*d['M_x']/len_effort
+                + self.model.interval*reg_term_M_x
+                
+                grad[19*NUM_NODES:20*NUM_NODES] = 2.0*self.model.interval*K_effort*d['F_y']/len_effort
+                + self.model.interval*reg_term_F_y
+                
+                grad[20*NUM_NODES:21*NUM_NODES] = 2.0*self.model.interval*K_effort*d['F_z']/len_effort
+                + self.model.interval*reg_term_F_z
 
 
-            return grad/100
+            return grad/10000
 
         q1, q2, q3, q4, q5, q6, q7, q8 = self.model.x[:8]
         u1, u2, u3, u4, u5, u6, u7, u8 = self.model.x[8:]
@@ -602,10 +655,13 @@ class OLDC_solver():
 
 
 
-        u1_mean = np.mean(model.x_meas_dict['speed'])
+        u_mean = np.mean(model.x_meas_dict['speed'])
         param_str = {str(param) : value for param, value in zip(model.p.keys(),model.p.values())}
 
         wheel_radius = param_str['rear_wheel_r']
+        wheel_rate_mean = np.mean(self.model.x_meas_dict['wheel_rate'])
+        wheel_rate_std = np.std(self.model.x_meas_dict['wheel_rate'])
+
         
         q3_mean = np.mean(self.model.x_meas_dict['yaw_angle_q3'])
         q4_mean = np.mean(self.model.x_meas_dict['roll_angle_q4'])
@@ -625,6 +681,10 @@ class OLDC_solver():
         u3_std = np.std(self.model.x_meas_dict['yaw_rate_u3'])
         u4_std = np.std(self.model.x_meas_dict['roll_rate_u4'])
         u7_std = np.std(self.model.x_meas_dict['steer_rate_u7'])
+        
+
+
+        
         # u5_std = np.std(model.x_meas_dict['pitch_rate_u5'])
         
         t = self.model.x_meas_dict['time']
@@ -652,39 +712,39 @@ class OLDC_solver():
         
         
 
-        N_std = 3
+        N_std = 4
 
 
 
         bounds = {
-         q1: (0,  u1_mean*self.model.DURATION*1.0),
-         q2: (-u1_mean*self.model.DURATION*1.0, u1_mean*self.model.DURATION*1.0),
+         q1: (0,  u_mean*self.model.DURATION*1.0),
+         q2: (-u_mean*self.model.DURATION*1.0, u_mean*self.model.DURATION*1.0),
          q3: (q3_mean - N_std*q3_std, q3_mean + N_std*q3_std),  # bicycle yaw
          q4: (q4_mean - N_std*q4_std, q4_mean + N_std*q4_std),  # bicycle roll
          # q3: (np.min(self.model.x_meas_dict['yaw_angle_q3']), np.max(self.model.x_meas_dict['yaw_angle_q3'])),  # bicycle yaw
 
          # q4: (np.min(self.model.x_meas_dict['roll_angle_q4']), np.max(self.model.x_meas_dict['roll_angle_q4'])),    # bicycle roll
          # q5: (-N_std*q5_std + q5_mean, q5_mean + N_std*q5_std), # bicycle pitch
-         q6: (-1.2*u1_mean*self.model.DURATION/wheel_radius, 0), # wheel angle
+         q6: (1.2*wheel_rate_mean*self.model.DURATION, 0), # wheel angle
          # q7: (np.min(self.model.x_meas_dict['steer_angle_q7']), np.max(self.model.x_meas_dict['steer_angle_q7'])),    # steering angle
-         q8: (-1.2*u1_mean*self.model.DURATION/wheel_radius, 0), #wheel angle
+         q8: (1.2*wheel_rate_mean*self.model.DURATION, 0), #wheel angle
 
          # u1: (0.5*u1_mean, u1_mean*1.5), #longitudinal speed
          # u2: (-0.5*u1_mean, 0.5*u1_mean), #lateral speed
-         # u3: (np.min(self.model.x_meas_dict['yaw_rate_u3']), np.max(self.model.x_meas_dict['yaw_rate_u3'])), #yaw angular rate
-         # u4: (np.min(self.model.x_meas_dict['roll_rate_u4']), np.max(self.model.x_meas_dict['roll_rate_u4'])), #roll angular rate
+         u3: (u3_mean-N_std*u3_std, u3_mean+N_std*u3_std), #yaw angular rate
+         u4: (u4_mean-N_std*u4_std, u4_mean+N_std*u4_std), #roll angular rate
          # u5: (-N_std*u5_std, N_std*u5_std), #pitch angular rate
-         # u6: (-np.mean(u)*1.05/0.3, -np.mean(u)*0.95/0.3), #wheel angular rate
-         # u7: (-N_std*u7_std, N_std*u7_std), #steer angular rate
+         u6: (wheel_rate_mean - N_std*wheel_rate_std, 0), #wheel angular rate
+         u7: (u7_mean-N_std*u7_std, u7_mean+N_std*u7_std), #steer angular rate
          # u7 : (np.min(self.model.x_meas_dict['steer_rate_u7']), np.max(self.model.x_meas_dict['steer_rate_u7'])),
-         # u8: (-np.mean(u)*1.05/0.3, -np.mean(u)*0.95/0.3), #wheel angular rate
+         u8: (wheel_rate_mean - N_std*wheel_rate_std, 0), #wheel angular rate
 
          T_ped : (-T_ped_max, 0),
         }
 
 
         if self.model.config['steer_torque'] == True:
-            bounds[T_steer] = (-25, 25)
+            bounds[T_steer] = (-20, 20)
         
     
         if self.model.config['roll_control'] == True:
@@ -695,7 +755,7 @@ class OLDC_solver():
         initial_state_constraints = {
             q1 : 0.0,
             q2 : 0.0,
-            q3 : 0.0,
+            # q3 : 0.0,
             # u1 : 3.0,
             # u2 : 0,
             # u6 : -3.0/0.3,
@@ -737,15 +797,25 @@ class OLDC_solver():
 
 
             x0 = np.zeros(self.model.x0_shape)
-            # u_mean = np.mean(model.df_exp['speed'])
-            # x0[0,:] = [np.trapezoid(u_mean*np.ones(i), model.x_meas_dict['time'][:i]) for i in range(model.NUM_NODES)]
-            # x0[4,:] =  np.ones(model.NUM_NODES)*0.3
-            # x0[5,:] = [np.trapezoid(u_mean*np.ones(i)/0.34, model.x_meas_dict['time'][:i]) for i in range(model.NUM_NODES)]
-            # x0[7,:] = x0[5,:]
             
-            # x0[8,:] = u_mean*np.ones(model.NUM_NODES)
-            # x0[13,:] = u_mean*np.ones(model.NUM_NODES)/0.34
-            # x0[15,:] = x0[13,:]
+            x0[2,:] = self.model.x_meas_dict['yaw_angle_q3']
+            x0[3,:] = self.model.x_meas_dict['roll_angle_q4']
+            x0[6,:] = self.model.x_meas_dict['steer_angle_q7']
+            
+            x0[10,:] = self.model.x_meas_dict['yaw_rate_u3']
+            x0[11,:] = self.model.x_meas_dict['roll_rate_u4']
+            
+            x0[13,:] = self.model.x_meas_dict['wheel_rate']
+
+            
+            x0[14,:] = self.model.x_meas_dict['steer_rate_u7']
+            
+            x0[15,:] = self.model.x_meas_dict['wheel_rate']
+
+
+
+
+            
 
         self.initial_guess = x0.flatten()  # u
 
@@ -1294,7 +1364,7 @@ if True:
     
     PATH = 'D:/Users/ronne/Documents/4_side_quest/OpenLoopBalanceControl/data/synthetic/'
 
-    Runs = ['20261007_165812']
+    Runs = ['20261009_185243']
     
     
     config = {'roll_control' : False,
@@ -1306,7 +1376,7 @@ if True:
                              'high_cut_freq' : 5},
               'synthetic' : True,
               'ti':0,
-              'tf':3
+              'tf':30
               }
     
     

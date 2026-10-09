@@ -249,10 +249,11 @@ def compute_inputs(x, t):
     """
     T4, T7 = compute_torques_lqr(x, t)
     T4 = T4*0
-    T6 = -3.0
+    T6 = -1.0*np.sin(2*3.14*t*1) - 0.5*np.sin(2*3.14*t*5) - 1.5
     Fx = 0.0
-    if t > 1.0 and t < 2.0:
+    if t > 1.0 and t < 10.0:
         Fy = 50.0*0
+        T7 = T7 + 10.0*np.sin(2*3.14*t*2)*0.1*t + 5.0*np.sin(2*3.14*t*4)*0.1*t + + 2.0*np.sin(2*3.14*t*5)*0.1*t
     else:
         Fy = 0.0
     Fz = 0.0
@@ -294,7 +295,7 @@ def create_pydy_system(bicycle, system):
     u4, u6, u7, u1, u2, u3, u5, u8 = system.u
 
     initial_speed = 3.0  # m/s
-    initial_roll_rate = 2  # rad/s
+    initial_roll_rate = 0.5  # rad/s
 
     pydy_sys.initial_conditions = {
         q1: 0.0,
@@ -324,8 +325,8 @@ def create_pydy_system(bicycle, system):
         (Fx, Fy, Fz, T4, T6, T7): compute_inputs,
     }
 
-    fps = 60  # frames per second
-    duration = 6.0  # seconds
+    fps = 100  # frames per second
+    duration = 30.0  # seconds
     pydy_sys.times = np.linspace(0.0, duration, num=int(duration*fps))
 
     return pydy_sys
@@ -380,7 +381,7 @@ if __name__ == "__main__":
     traj = pydy_sys.integrate()
     input_traj = eval_input_trajectories(pydy_sys.times, traj)
     plot_trajectories(pydy_sys, traj)
-    ani = animate_motion(bicycle, pydy_sys, traj, input_traj)
+    # ani = animate_motion(bicycle, pydy_sys, traj, input_traj)
     plt.show()
 
 
