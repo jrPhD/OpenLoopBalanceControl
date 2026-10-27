@@ -88,3 +88,21 @@ figures/
 
 #Confi file
 *.ini
+
+
+# Pixi environment (local installation cache and environments)
+.pixi/
+
+# Python build and distribution artifacts
+build/
+dist/
+*.egg-info/
+
+# Python cache and compiled bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testing and notebooks (optional but recommended)
+.pytest_cache/
+.ipynb_checkpoints/
